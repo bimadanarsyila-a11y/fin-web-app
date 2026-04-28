@@ -1,423 +1,801 @@
-<!DOCTYPE html>
-<html lang="id" class="scroll-smooth">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kerja dengan Sistem — Edukasi AI & Automation</title>
-  <meta name="description" content="Pusat edukasi AI & Automation. Pelajari cara membangun sistem otomatis untuk bisnis dan produktivitas Anda." />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#0EA5E9',
-            'primary-dark': '#0284C7',
-            'primary-light': '#38BDF8',
-            accent: '#8B5CF6',
-            'accent-light': '#A78BFA',
-            dark: { 950: '#030712', 900: '#0B0F19', 800: '#111827', 700: '#1F2937', 600: '#374151' },
-            surface: '#1E293B',
-          },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          },
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  PlusCircle, 
+  Download, 
+  Wallet, 
+  TrendingUp, 
+  TrendingDown, 
+  PiggyBank, 
+  Trash2,
+  Calendar,
+  DollarSign,
+  Sun,
+  Moon,
+  ArrowLeft,
+  Target,
+  Edit2,
+  ChevronDown,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+  CreditCard,
+  Filter,
+  ClipboardList
+} from 'lucide-react';
+
+// Konstanta Gaya 3D (Neo-Brutalism)
+const box3D = "border-2 border-gray-900 dark:border-gray-600 shadow-[4px_4px_0_0_#111827] dark:shadow-[4px_4px_0_0_#000000] transition-all";
+const box3DHover = "hover:shadow-[6px_6px_0_0_#111827] dark:hover:shadow-[6px_6px_0_0_#000000] hover:-translate-y-0.5 transition-all";
+
+export default function App() {
+  // --- STATES ---
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('finance_theme') === 'dark');
+  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'savings', 'wallets', 'history', 'planner'
+
+  const [transactions, setTransactions] = useState(() => {
+    const saved = localStorage.getItem('finance_data');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [goals, setGoals] = useState(() => {
+    const saved = localStorage.getItem('finance_goals');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [plans, setPlans] = useState(() => {
+    const saved = localStorage.getItem('finance_plans');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [wallets, setWallets] = useState(() => {
+    const saved = localStorage.getItem('finance_wallets');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', name: 'Uang Tunai', balance: 0, color: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' },
+      { id: '2', name: 'Rekening BCA', balance: 0, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' },
+      { id: '3', name: 'GoPay', balance: 0, color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300' }
+    ];
+  });
+
+  const initialCategoryMap = {
+    'Pemasukan': ['Gaji', 'Bonus', 'Hasil Bisnis', 'Investasi'],
+    'Pengeluaran Harian': ['Makan & Minum', 'Transportasi', 'Belanja', 'Hiburan'],
+    'Biaya Bulanan': ['Listrik & Air', 'Internet', 'Sewa/KPR', 'Cicilan', 'Asuransi'],
+    'Tabungan': ['Dana Darurat', 'Investasi', 'Tabungan Liburan']
+  };
+
+  const [categoryMap, setCategoryMap] = useState(() => {
+    const saved = localStorage.getItem('finance_categories');
+    return saved ? JSON.parse(saved) : initialCategoryMap;
+  });
+
+  // Global & Table Filters
+  const [globalFilterType, setGlobalFilterType] = useState('month'); 
+  const [globalFilterValue, setGlobalFilterValue] = useState(new Date().toISOString().slice(0, 7));
+  const [tableFilters, setTableFilters] = useState({ date: '', category: '', desc: '', type: '' });
+
+  // Specific History States
+  const [historyType, setHistoryType] = useState('pemasukan'); // 'pemasukan' atau 'pengeluaran'
+  const [historyCatFilter, setHistoryCatFilter] = useState('');
+  const [historyTimeFilterType, setHistoryTimeFilterType] = useState('all'); // 'all', 'month', 'date'
+  const [historyTimeFilterValue, setHistoryTimeFilterValue] = useState(new Date().toISOString().slice(0, 7));
+
+  // Multi-Select States
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // Form States
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    type: 'Pemasukan',
+    customType: '',
+    category: 'Gaji',
+    customCategory: '',
+    amount: '',
+    description: ''
+  });
+
+  const [catDropdownOpen, setCatDropdownOpen] = useState(false);
+  const [planCatDropdownOpen, setPlanCatDropdownOpen] = useState(false);
+  
+  const [showGoalForm, setShowGoalForm] = useState(false);
+  const [goalForm, setGoalForm] = useState({ name: '', target: '', date: '', urgency: 'sedang' });
+  
+  const [planForm, setPlanForm] = useState({
+    month: new Date().toISOString().slice(0, 7),
+    type: 'Pengeluaran Harian',
+    customType: '',
+    category: 'Makan & Minum',
+    customCategory: '',
+    amount: '',
+    description: ''
+  });
+
+  const [showWalletForm, setShowWalletForm] = useState(false);
+  const [walletForm, setWalletForm] = useState({ name: '', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' });
+
+  // Modal Dialog Kustom
+  const [modalState, setModalState] = useState({
+    isOpen: false, type: 'confirm', title: '', message: '', inputValue: '', inputType: 'text', onConfirm: null,
+  });
+
+  const closeModal = () => setModalState(prev => ({ ...prev, isOpen: false, inputValue: '' }));
+
+  // --- EFFECTS ---
+  useEffect(() => {
+    localStorage.setItem('finance_theme', darkMode ? 'dark' : 'light');
+    if (darkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  }, [darkMode]);
+
+  useEffect(() => localStorage.setItem('finance_data', JSON.stringify(transactions)), [transactions]);
+  useEffect(() => localStorage.setItem('finance_goals', JSON.stringify(goals)), [goals]);
+  useEffect(() => localStorage.setItem('finance_plans', JSON.stringify(plans)), [plans]);
+  useEffect(() => localStorage.setItem('finance_wallets', JSON.stringify(wallets)), [wallets]);
+  useEffect(() => localStorage.setItem('finance_categories', JSON.stringify(categoryMap)), [categoryMap]);
+
+  // --- UTILS ---
+  const formatRupiah = (number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number || 0);
+
+  // --- HANDLERS ---
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'type') {
+      const isCustom = value === 'Lainnya...';
+      const firstCat = isCustom ? '' : (categoryMap[value] ? categoryMap[value][0] : '');
+      setFormData(prev => ({ 
+        ...prev, type: value, category: isCustom ? 'Lainnya...' : firstCat, customType: isCustom ? prev.customType : '', customCategory: isCustom ? prev.customCategory : ''
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleCatSelect = (cat) => {
+    setFormData(prev => ({ ...prev, category: cat, customCategory: cat === 'Lainnya...' ? prev.customCategory : '' }));
+    setCatDropdownOpen(false);
+  };
+
+  const handlePlanCatSelect = (cat) => {
+    setPlanForm(prev => ({ ...prev, category: cat, customCategory: cat === 'Lainnya...' ? prev.customCategory : '' }));
+    setPlanCatDropdownOpen(false);
+  };
+
+  const deleteCategoryFromMap = (e, type, categoryToDelete) => {
+    e.preventDefault(); e.stopPropagation(); setCatDropdownOpen(false); setPlanCatDropdownOpen(false);
+    setModalState({
+      isOpen: true, type: 'confirm', title: 'Hapus Kategori', message: `Hapus kategori "${categoryToDelete}" secara permanen?`,
+      onConfirm: () => {
+        setCategoryMap(prev => {
+          const newMap = { ...prev };
+          newMap[type] = newMap[type].filter(c => c !== categoryToDelete);
+          return newMap;
+        });
+        if(formData.category === categoryToDelete) setFormData(prev => ({ ...prev, category: 'Lainnya...' }));
+      }
+    });
+  };
+
+  // --- FILTERING & STATS ---
+  const filteredByGlobal = useMemo(() => {
+    return transactions.filter(t => {
+      if (globalFilterType === 'all') return true;
+      if (globalFilterType === 'month') return t.date.startsWith(globalFilterValue);
+      if (globalFilterType === 'date') return t.date === globalFilterValue;
+      return true;
+    });
+  }, [transactions, globalFilterType, globalFilterValue]);
+
+  const filteredForTable = useMemo(() => {
+    return filteredByGlobal.filter(t => {
+      return t.date.includes(tableFilters.date) &&
+             (tableFilters.category === '' || t.category === tableFilters.category) &&
+             t.description.toLowerCase().includes(tableFilters.desc.toLowerCase()) &&
+             (tableFilters.type === '' || t.type === tableFilters.type);
+    });
+  }, [filteredByGlobal, tableFilters]);
+
+  const uniqueTypes = useMemo(() => [...new Set(filteredByGlobal.map(t => t.type))], [filteredByGlobal]);
+  const uniqueCats = useMemo(() => [...new Set(filteredByGlobal.map(t => t.category))], [filteredByGlobal]);
+
+  const stats = useMemo(() => {
+    let totalAllPemasukan = 0; let totalAllPengeluaran = 0; let totalAllTabungan = 0;
+    transactions.forEach(t => {
+      if (t.type.toLowerCase().includes('pemasukan')) totalAllPemasukan += t.amount;
+      else if (t.type.toLowerCase().includes('tabungan')) totalAllTabungan += t.amount;
+      else totalAllPengeluaran += t.amount;
+    });
+
+    let filteredPemasukan = 0; let filteredPengeluaran = 0;
+    filteredByGlobal.forEach(t => {
+      if (t.type.toLowerCase().includes('pemasukan')) filteredPemasukan += t.amount;
+      else if (!t.type.toLowerCase().includes('tabungan')) filteredPengeluaran += t.amount;
+    });
+
+    return {
+      saldoSaatIni: totalAllPemasukan - totalAllPengeluaran - totalAllTabungan,
+      totalTabungan: totalAllTabungan,
+      pemasukanFilter: filteredPemasukan,
+      pengeluaranFilter: filteredPengeluaran
+    };
+  }, [transactions, filteredByGlobal]);
+
+  const sumOfWallets = wallets.reduce((acc, w) => acc + w.balance, 0);
+
+  // 4. PLANNER VIEW (Rencana Bulanan)
+  const renderPlannerView = () => {
+    const handlePlanSubmit = (e) => {
+      e.preventDefault();
+      if (!planForm.amount || planForm.amount <= 0) return;
+
+      let finalType = planForm.type; let finalCategory = planForm.category;
+      let mapUpdated = false; let newCategoryMap = { ...categoryMap };
+
+      if (planForm.type === 'Lainnya...' && planForm.customType.trim() !== '') {
+        finalType = planForm.customType.trim();
+        if (!newCategoryMap[finalType]) { newCategoryMap[finalType] = []; mapUpdated = true; }
+      }
+      if (planForm.category === 'Lainnya...' && planForm.customCategory.trim() !== '') {
+        finalCategory = planForm.customCategory.trim();
+        if (!newCategoryMap[finalType].includes(finalCategory)) {
+          newCategoryMap[finalType] = [...(newCategoryMap[finalType] || []), finalCategory];
+          mapUpdated = true;
         }
       }
-    }
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body class="bg-dark-950 text-gray-300 font-sans antialiased overflow-x-hidden">
+      if (mapUpdated) setCategoryMap(newCategoryMap);
 
-  <!-- ========== NAVBAR ========== -->
-  <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-500">
-    <div class="max-w-6xl mx-auto px-5 sm:px-8">
-      <div class="flex items-center justify-between h-16 lg:h-[72px]">
-        <a href="#" class="flex items-center gap-2.5 group">
-          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
-            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-          </div>
-          <span class="font-display font-bold text-[15px] text-white tracking-tight">Kerja<span class="text-primary">dengan</span>Sistem</span>
-        </a>
-        <div class="hidden lg:flex items-center gap-1">
-          <a href="#produk" class="nav-link">Produk</a>
-          <a href="#edukasi" class="nav-link">Edukasi</a>
-          <a href="#testimonial" class="nav-link">Testimonial</a>
-          <a href="#newsletter" class="nav-link">Newsletter</a>
-        </div>
-        <div class="hidden lg:flex items-center gap-3">
-          <div class="flex items-center gap-1">
-            <a href="https://www.instagram.com/kerjadengansistem/" target="_blank" rel="noopener" class="social-icon" aria-label="Instagram">
-              <svg class="w-[14px] h-[14px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-            </a>
-            <a href="https://www.facebook.com/profile.php?id=61588153064812" target="_blank" rel="noopener" class="social-icon" aria-label="Facebook">
-              <svg class="w-[14px] h-[14px]" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            </a>
-            <a href="https://www.threads.com/@kerjadengansistem" target="_blank" rel="noopener" class="social-icon" aria-label="Threads">
-              <svg class="w-[14px] h-[14px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.59 12c.025 3.086.718 5.496 2.057 7.164 1.432 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.96-.065-1.187.408-2.26 1.33-3.017.88-.724 2.104-1.138 3.542-1.199 1.036-.044 2-.013 2.882.093-.2-1.265-.9-1.91-2.164-1.985-.93-.055-1.852.27-2.503.542l-.737-1.852c.853-.392 2.14-.824 3.58-.737 1.233.074 2.245.478 3.01 1.2.7.66 1.163 1.56 1.378 2.67.476.168.916.374 1.32.618 1.19.717 2.079 1.69 2.57 2.823.776 1.79.856 4.574-1.293 6.756C17.837 22.926 15.467 23.98 12.186 24z"/></svg>
-            </a>
-            <a href="https://www.youtube.com/@KerjaDengansistem" target="_blank" rel="noopener" class="social-icon" aria-label="YouTube">
-              <svg class="w-[14px] h-[14px]" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-            </a>
-            <a href="https://www.tiktok.com/@kerja.dengan.sist" target="_blank" rel="noopener" class="social-icon" aria-label="TikTok">
-              <svg class="w-[14px] h-[14px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
-            </a>
-          </div>
-          <a href="#produk" class="ml-2 px-4 py-2 text-[13px] font-semibold text-white bg-white/[0.08] hover:bg-white/[0.12] rounded-lg border border-white/[0.06] transition-all duration-300">Mulai Belajar</a>
-        </div>
-        <button id="mobile-menu-btn" class="lg:hidden p-2 rounded-lg text-gray-400 hover:text-white transition-colors" aria-label="Toggle menu">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
-      </div>
-    </div>
-    <div id="mobile-menu" class="lg:hidden hidden bg-dark-950/98 backdrop-blur-2xl border-t border-white/[0.04]">
-      <div class="px-5 py-5 space-y-1">
-        <a href="#produk" class="mobile-nav-link block px-4 py-3 rounded-xl text-[15px] text-gray-400 hover:text-white hover:bg-white/[0.04] transition-all">Produk</a>
-        <a href="#edukasi" class="mobile-nav-link block px-4 py-3 rounded-xl text-[15px] text-gray-400 hover:text-white hover:bg-white/[0.04] transition-all">Edukasi</a>
-        <a href="#testimonial" class="mobile-nav-link block px-4 py-3 rounded-xl text-[15px] text-gray-400 hover:text-white hover:bg-white/[0.04] transition-all">Testimonial</a>
-        <a href="#newsletter" class="mobile-nav-link block px-4 py-3 rounded-xl text-[15px] text-gray-400 hover:text-white hover:bg-white/[0.04] transition-all">Newsletter</a>
-        <div class="flex items-center gap-2 px-4 pt-4 border-t border-white/[0.04]">
-          <a href="https://www.instagram.com/kerjadengansistem/" target="_blank" rel="noopener" class="social-icon" aria-label="Instagram"><svg class="w-[14px] h-[14px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></a>
-          <a href="https://www.facebook.com/profile.php?id=61588153064812" target="_blank" rel="noopener" class="social-icon" aria-label="Facebook"><svg class="w-[14px] h-[14px]" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a>
-          <a href="https://www.threads.com/@kerjadengansistem" target="_blank" rel="noopener" class="social-icon" aria-label="Threads"><svg class="w-[14px] h-[14px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.59 12c.025 3.086.718 5.496 2.057 7.164 1.432 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.96-.065-1.187.408-2.26 1.33-3.017.88-.724 2.104-1.138 3.542-1.199 1.036-.044 2-.013 2.882.093-.2-1.265-.9-1.91-2.164-1.985-.93-.055-1.852.27-2.503.542l-.737-1.852c.853-.392 2.14-.824 3.58-.737 1.233.074 2.245.478 3.01 1.2.7.66 1.163 1.56 1.378 2.67.476.168.916.374 1.32.618 1.19.717 2.079 1.69 2.57 2.823.776 1.79.856 4.574-1.293 6.756C17.837 22.926 15.467 23.98 12.186 24z"/></svg></a>
-          <a href="https://www.youtube.com/@KerjaDengansistem" target="_blank" rel="noopener" class="social-icon" aria-label="YouTube"><svg class="w-[14px] h-[14px]" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
-          <a href="https://www.tiktok.com/@kerja.dengan.sist" target="_blank" rel="noopener" class="social-icon" aria-label="TikTok"><svg class="w-[14px] h-[14px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg></a>
-        </div>
-      </div>
-    </div>
-  </nav>
+      const newPlan = {
+        id: Date.now().toString(), month: planForm.month, type: finalType, category: finalCategory,
+        amount: parseFloat(planForm.amount), description: planForm.description || '-', isCompleted: false
+      };
 
-  <!-- ========== HERO ========== -->
-  <section class="relative min-h-screen flex items-center justify-center overflow-hidden">
-    <!-- Ambient background -->
-    <div class="hero-glow"></div>
-    <div class="hero-grid"></div>
-    <div class="hero-radial"></div>
+      setPlans([newPlan, ...plans]);
+      setPlanForm(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
+    };
 
-    <div class="relative max-w-4xl mx-auto px-5 sm:px-8 text-center pt-28 pb-20">
-      <div class="scroll-reveal">
-        <!-- Pill badge -->
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-gray-400 mb-8 backdrop-blur-sm">
-          <span class="flex h-2 w-2 relative">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-          </span>
-          Edukasi AI & Automation #1 di Indonesia
-        </div>
+    const executePlan = (plan) => {
+      setModalState({
+        isOpen: true, type: 'confirm', title: 'Eksekusi Rencana', 
+        message: `Catat "${plan.category}" (Rp${formatRupiah(plan.amount)}) ke riwayat transaksi hari ini dan kalkulasi saldonya?`,
+        onConfirm: () => {
+          setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, isCompleted: true } : p));
+          const newTx = {
+            id: Date.now().toString(), date: new Date().toISOString().split('T')[0],
+            type: plan.type, category: plan.category, amount: plan.amount, description: `[Rencana] ${plan.description}`
+          };
+          setTransactions(prev => [newTx, ...prev]);
+        }
+      });
+    };
 
-        <!-- Headline -->
-        <h1 class="font-display text-[clamp(2.5rem,6vw,4.5rem)] font-extrabold text-white leading-[1.08] tracking-tight mb-6">
-          Bangun Sistem.<br/>
-          <span class="hero-gradient-text">Otomasi Segalanya.</span>
-        </h1>
+    const deletePlan = (id) => {
+      setModalState({
+        isOpen: true, type: 'confirm', title: 'Hapus Rencana', message: 'Hapus rencana ini dari daftar?',
+        onConfirm: () => setPlans(prev => prev.filter(p => p.id !== id))
+      });
+    };
 
-        <p class="max-w-xl mx-auto text-[17px] sm:text-lg text-gray-400 leading-relaxed mb-10">
-          Pelajari cara membangun sistem otomatis menggunakan AI untuk bisnis dan produktivitas Anda. Dari nol hingga mahir.
-        </p>
+    const currentMonthPlans = plans.filter(p => p.month === planForm.month);
+    const totalPlannedAmount = currentMonthPlans.reduce((acc, curr) => acc + curr.amount, 0);
 
-        <!-- CTA Buttons -->
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <a href="#produk" class="btn-primary group">
-            Jelajahi Produk
-            <svg class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-          </a>
-          <a href="#edukasi" class="btn-ghost">
-            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Mulai Belajar Gratis
-          </a>
-        </div>
-      </div>
-
-      <!-- Trusted by / Stats bar -->
-      <div class="mt-24 scroll-reveal" style="--delay: 0.2s">
-        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-600 font-medium mb-6">Dipercaya oleh ribuan profesional</p>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.04] rounded-2xl overflow-hidden border border-white/[0.04]">
-          <div class="stat-cell">
-            <div class="text-2xl sm:text-3xl font-display font-bold text-white" data-count="5000">0+</div>
-            <div class="text-[12px] text-gray-500 mt-0.5">Siswa Aktif</div>
-          </div>
-          <div class="stat-cell">
-            <div class="text-2xl sm:text-3xl font-display font-bold text-white" data-count="50">0+</div>
-            <div class="text-[12px] text-gray-500 mt-0.5">Modul Edukasi</div>
-          </div>
-          <div class="stat-cell">
-            <div class="text-2xl sm:text-3xl font-display font-bold text-white" data-count="100">0+</div>
-            <div class="text-[12px] text-gray-500 mt-0.5">Template Automasi</div>
-          </div>
-          <div class="stat-cell">
-            <div class="text-2xl sm:text-3xl font-display font-bold text-white">4.9<span class="text-yellow-400 ml-0.5">★</span></div>
-            <div class="text-[12px] text-gray-500 mt-0.5">Rating Rata-rata</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Fade to section -->
-    <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-dark-950 to-transparent"></div>
-  </section>
-
-  <!-- ========== MARQUEE LOGOS ========== -->
-  <section class="py-4 border-y border-white/[0.03] overflow-hidden">
-    <div class="marquee-track">
-      <div class="marquee-content">
-        <span class="marquee-item">🤖 ChatGPT</span>
-        <span class="marquee-item">⚡ Zapier</span>
-        <span class="marquee-item">🔗 Make.com</span>
-        <span class="marquee-item">📊 Notion</span>
-        <span class="marquee-item">🧠 Midjourney</span>
-        <span class="marquee-item">🔄 n8n</span>
-        <span class="marquee-item">📝 Claude AI</span>
-        <span class="marquee-item">🎯 Airtable</span>
-        <span class="marquee-item">💬 WhatsApp API</span>
-        <span class="marquee-item">📈 Google Sheets AI</span>
-        <span class="marquee-item">🤖 ChatGPT</span>
-        <span class="marquee-item">⚡ Zapier</span>
-        <span class="marquee-item">🔗 Make.com</span>
-        <span class="marquee-item">📊 Notion</span>
-        <span class="marquee-item">🧠 Midjourney</span>
-        <span class="marquee-item">🔄 n8n</span>
-        <span class="marquee-item">📝 Claude AI</span>
-        <span class="marquee-item">🎯 Airtable</span>
-        <span class="marquee-item">💬 WhatsApp API</span>
-        <span class="marquee-item">📈 Google Sheets AI</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- ========== PRODUK ========== -->
-  <section id="produk" class="py-28 relative">
-    <div class="section-glow-left"></div>
-    <div class="max-w-6xl mx-auto px-5 sm:px-8">
-      <div class="text-center mb-5 scroll-reveal">
-        <div class="section-label">Katalog Produk</div>
-      </div>
-      <h2 class="font-display text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white text-center leading-tight mb-4 scroll-reveal" style="--delay: 0.05s">
-        Produk Digital Kami
-      </h2>
-      <p class="max-w-lg mx-auto text-center text-gray-400 text-[15px] leading-relaxed mb-14 scroll-reveal" style="--delay: 0.1s">
-        Dari template siap pakai hingga kursus mendalam — pilih yang sesuai kebutuhan Anda.
-      </p>
-
-      <!-- Tab Filter -->
-      <div class="flex justify-center mb-12 scroll-reveal" style="--delay: 0.15s">
-        <div class="tab-container">
-          <button class="tab-btn active" data-tab="semua">Semua</button>
-          <button class="tab-btn" data-tab="berbayar">Berbayar</button>
-          <button class="tab-btn" data-tab="gratis">Gratis</button>
-          <div class="tab-indicator"></div>
-        </div>
-      </div>
-
-      <!-- Products Grid (dynamic) -->
-      <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-    </div>
-  </section>
-
-  <!-- ========== EDUKASI ========== -->
-  <section id="edukasi" class="py-28 relative">
-    <div class="section-glow-right"></div>
-    <div class="max-w-6xl mx-auto px-5 sm:px-8">
-      <div class="text-center mb-5 scroll-reveal">
-        <div class="section-label">Edukasi</div>
-      </div>
-      <h2 class="font-display text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white text-center leading-tight mb-4 scroll-reveal" style="--delay: 0.05s">
-        AI & Automation Insights
-      </h2>
-      <p class="max-w-lg mx-auto text-center text-gray-400 text-[15px] leading-relaxed mb-14 scroll-reveal" style="--delay: 0.1s">
-        Konten edukasi terbaru seputar AI, automasi, dan cara membangun sistem yang bekerja untuk Anda.
-      </p>
-
-      <!-- Feature Pillars -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-20">
-        <div class="pillar-card scroll-reveal" style="--delay: 0.05s">
-          <div class="pillar-icon pillar-icon-blue">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-          </div>
-          <h3 class="font-display font-bold text-white text-lg mb-2">AI untuk Pemula</h3>
-          <p class="text-gray-400 text-sm leading-relaxed mb-4">Pahami konsep AI, machine learning, dan cara menerapkannya dalam kehidupan sehari-hari.</p>
-          <a href="#" class="pillar-link">Pelajari <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
-        </div>
-        <div class="pillar-card scroll-reveal" style="--delay: 0.1s">
-          <div class="pillar-icon pillar-icon-purple">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          </div>
-          <h3 class="font-display font-bold text-white text-lg mb-2">Workflow Automation</h3>
-          <p class="text-gray-400 text-sm leading-relaxed mb-4">Bangun workflow otomatis menggunakan Zapier, Make, dan n8n. Hemat waktu berjam-jam.</p>
-          <a href="#" class="pillar-link pillar-link-purple">Pelajari <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
-        </div>
-        <div class="pillar-card scroll-reveal" style="--delay: 0.15s">
-          <div class="pillar-icon pillar-icon-green">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-          </div>
-          <h3 class="font-display font-bold text-white text-lg mb-2">Scaling dengan AI</h3>
-          <p class="text-gray-400 text-sm leading-relaxed mb-4">Strategi advanced untuk scale bisnis menggunakan AI agents, custom GPTs, dan API.</p>
-          <a href="#" class="pillar-link pillar-link-green">Pelajari <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
-        </div>
-      </div>
-
-      <!-- Articles Grid (dynamic) -->
-      <div class="scroll-reveal" style="--delay: 0.1s">
-        <div class="flex items-center justify-between mb-8">
-          <h3 class="font-display font-bold text-white text-xl">Artikel Terbaru</h3>
-          <a href="#" class="text-[13px] text-gray-500 hover:text-primary transition-colors flex items-center gap-1">Lihat Semua <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
-        </div>
-        <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ========== TESTIMONIAL ========== -->
-  <section id="testimonial" class="py-28 relative">
-    <div class="max-w-6xl mx-auto px-5 sm:px-8">
-      <div class="text-center mb-5 scroll-reveal">
-        <div class="section-label">Testimonial</div>
-      </div>
-      <h2 class="font-display text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white text-center leading-tight mb-4 scroll-reveal" style="--delay: 0.05s">
-        Apa Kata Mereka?
-      </h2>
-      <p class="max-w-lg mx-auto text-center text-gray-400 text-[15px] leading-relaxed mb-14 scroll-reveal" style="--delay: 0.1s">
-        Ribuan orang sudah merasakan manfaat belajar AI & Automation bersama kami.
-      </p>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div class="testimonial-card scroll-reveal" style="--delay: 0.05s">
-          <div class="flex items-center gap-0.5 mb-4">
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-          </div>
-          <p class="text-[14px] text-gray-300 leading-relaxed mb-6">"Setelah mengikuti kursus Masterclass ChatGPT, bisnis saya berhasil menghemat 15 jam per minggu. Automasi yang diajarkan benar-benar game changer!"</p>
-          <div class="flex items-center gap-3 mt-auto">
-            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-xs">AR</div>
-            <div>
-              <div class="text-white font-medium text-[13px]">Andi Rahmat</div>
-              <div class="text-gray-500 text-[11px]">CEO, Digital Agency</div>
-            </div>
-          </div>
-        </div>
-        <div class="testimonial-card scroll-reveal" style="--delay: 0.1s">
-          <div class="flex items-center gap-0.5 mb-4">
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-          </div>
-          <p class="text-[14px] text-gray-300 leading-relaxed mb-6">"E-book Panduan AI Automation-nya sangat lengkap dan mudah dipahami. Saya yang awam teknologi pun bisa langsung praktik. Highly recommended!"</p>
-          <div class="flex items-center gap-3 mt-auto">
-            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-accent to-pink-500 flex items-center justify-center text-white font-bold text-xs">SP</div>
-            <div>
-              <div class="text-white font-medium text-[13px]">Sari Putri</div>
-              <div class="text-gray-500 text-[11px]">Freelancer & Content Creator</div>
-            </div>
-          </div>
-        </div>
-        <div class="testimonial-card scroll-reveal" style="--delay: 0.15s">
-          <div class="flex items-center gap-0.5 mb-4">
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-          </div>
-          <p class="text-[14px] text-gray-300 leading-relaxed mb-6">"Template Notion-nya luar biasa rapi. Langsung bisa dipakai untuk manage tim saya. Investasi terbaik bulan ini. Terima kasih!"</p>
-          <div class="flex items-center gap-3 mt-auto">
-            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center text-white font-bold text-xs">BW</div>
-            <div>
-              <div class="text-white font-medium text-[13px]">Budi Wicaksono</div>
-              <div class="text-gray-500 text-[11px]">Startup Founder</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ========== NEWSLETTER ========== -->
-  <section id="newsletter" class="py-28 relative">
-    <div class="max-w-3xl mx-auto px-5 sm:px-8">
-      <div class="newsletter-card scroll-reveal">
-        <div class="absolute inset-0 rounded-3xl overflow-hidden">
-          <div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/8 rounded-full blur-3xl"></div>
-          <div class="absolute -bottom-24 -left-24 w-64 h-64 bg-accent/8 rounded-full blur-3xl"></div>
-        </div>
-        <div class="relative text-center">
-          <div class="section-label mb-5">Newsletter</div>
-          <h2 class="font-display text-2xl sm:text-3xl font-bold text-white mb-3">
-            Dapatkan Tips AI & Automasi<br class="hidden sm:block"/>Langsung ke Inbox Anda
+    return (
+      <div className="space-y-4 sm:space-y-6 animate-fadeIn">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <button onClick={() => setCurrentView('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}>
+            <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
+          </button>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            <ClipboardList className="text-amber-500 w-5 h-5 sm:w-6 sm:h-6" /> Rencana Bulanan
           </h2>
-          <p class="text-gray-400 text-[15px] mb-8 max-w-md mx-auto">
-            Bergabung dengan 5.000+ subscriber. Tips, tutorial, dan update terbaru setiap minggu. Gratis selamanya.
-          </p>
-          <form id="newsletter-form" class="flex flex-col sm:flex-row gap-2.5 max-w-md mx-auto">
-            <input type="email" placeholder="email@anda.com" required class="newsletter-input" />
-            <button type="submit" class="btn-primary whitespace-nowrap !py-3">
-              Subscribe
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-            </button>
-          </form>
-          <p class="text-gray-600 text-[11px] mt-4">Kami menghargai privasi Anda. Unsubscribe kapan saja.</p>
         </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- ========== FOOTER ========== -->
-  <footer id="kontak" class="border-t border-white/[0.04] pt-16 pb-8">
-    <div class="max-w-6xl mx-auto px-5 sm:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-14">
-        <div class="lg:col-span-2">
-          <a href="#" class="flex items-center gap-2.5 mb-4">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        {/* Layout Grid Planner */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
+          
+          {/* Planner Form */}
+          <div className={`lg:col-span-4 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col ${box3D}`}>
+            <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-4 sm:mb-5">Buat Rencana</h2>
+            <form onSubmit={handlePlanSubmit} className="space-y-3 sm:space-y-4">
+              <div>
+                <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Bulan Rencana</label>
+                <input type="month" required value={planForm.month} onChange={e => setPlanForm({...planForm, month: e.target.value})} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors" />
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Jenis Transaksi</label>
+                <select value={planForm.type} onChange={e => {
+                  const val = e.target.value;
+                  const isCustom = val === 'Lainnya...';
+                  setPlanForm({...planForm, type: val, category: isCustom ? 'Lainnya...' : (categoryMap[val] ? categoryMap[val][0] : ''), customType: isCustom ? planForm.customType : '', customCategory: isCustom ? planForm.customCategory : ''});
+                }} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 transition-colors cursor-pointer">
+                  {Object.keys(categoryMap).map(type => <option key={type} value={type}>{type}</option>)}
+                  <option value="Lainnya...">Lainnya...</option>
+                </select>
+                {planForm.type === 'Lainnya...' && (
+                  <input type="text" placeholder="Ketik jenis baru..." required value={planForm.customType} onChange={e => setPlanForm({...planForm, customType: e.target.value})} className="mt-2 w-full border-2 border-amber-300 dark:border-amber-600 rounded-lg p-2 sm:p-2.5 bg-amber-50 dark:bg-amber-900/20 text-gray-900 dark:text-white outline-none" />
+                )}
+              </div>
+              <div className="relative">
+                <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Kategori</label>
+                <div onClick={() => setPlanCatDropdownOpen(!planCatDropdownOpen)} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium flex justify-between items-center cursor-pointer select-none">
+                  <span className="truncate pr-2">{planForm.category}</span>
+                  <ChevronDown size={16} className="text-gray-500" />
+                </div>
+                {planCatDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setPlanCatDropdownOpen(false)}></div>
+                    <div className="absolute z-50 w-full mt-1 sm:mt-2 bg-white dark:bg-gray-800 border-2 border-gray-800 dark:border-gray-600 rounded-lg shadow-[4px_4px_0_0_#000000] max-h-48 overflow-y-auto">
+                      {(categoryMap[planForm.type] || []).map(cat => (
+                        <div key={cat} className="flex justify-between items-center p-2.5 sm:p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer font-medium border-b border-gray-100 dark:border-gray-700">
+                          <span onClick={() => handlePlanCatSelect(cat)} className="flex-1 text-gray-900 dark:text-white truncate">{cat}</span>
+                          <div className="p-1 sm:p-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg ml-2 group" onMouseDown={(e) => deleteCategoryFromMap(e, planForm.type, cat)}><Trash2 size={14} className="text-gray-400 group-hover:text-red-500" /></div>
+                        </div>
+                      ))}
+                      <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-200 cursor-pointer text-gray-900 dark:text-white font-bold" onClick={() => handlePlanCatSelect('Lainnya...')}>+ Tambah Lainnya...</div>
+                    </div>
+                  </>
+                )}
+                {planForm.category === 'Lainnya...' && <input type="text" placeholder="Ketik kategori baru..." required value={planForm.customCategory} onChange={e => setPlanForm({...planForm, customCategory: e.target.value})} className="mt-2 w-full border-2 border-amber-300 rounded-lg p-2 sm:p-2.5 bg-amber-50 outline-none" />}
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Nominal (Rp)</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign size={16} className="text-gray-500" /></div>
+                  <input type="number" required value={planForm.amount} onChange={e => setPlanForm({...planForm, amount: e.target.value})} placeholder="0" className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-black outline-none focus:border-gray-900 dark:focus:border-white transition-colors" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Keterangan Tambahan</label>
+                <input type="text" value={planForm.description} onChange={e => setPlanForm({...planForm, description: e.target.value})} placeholder="Cth: Anggaran Belanja..." className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none" />
+              </div>
+              <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 sm:py-3.5 px-4 rounded-xl transition-all mt-4 border-2 border-amber-900 shadow-[2px_2px_0_0_#78350f] active:shadow-none active:translate-y-[2px]">
+                Simpan ke Rencana
+              </button>
+            </form>
+          </div>
+
+          {/* Planned List Container */}
+          <div className={`lg:col-span-8 bg-white dark:bg-gray-800 rounded-2xl flex flex-col h-[500px] lg:h-auto overflow-hidden ${box3D}`}>
+            <div className="p-4 sm:p-6 border-b-2 border-gray-200 dark:border-gray-700 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 gap-3 sm:gap-0">
+              <div>
+                <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white">Daftar Rencana Bulan {planForm.month}</h2>
+                <p className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">Total Dianggarkan: {formatRupiah(totalPlannedAmount)}</p>
+              </div>
             </div>
-            <span class="font-display font-bold text-[15px] text-white tracking-tight">Kerja<span class="text-primary">dengan</span>Sistem</span>
-          </a>
-          <p class="text-gray-500 text-sm leading-relaxed max-w-sm mb-6">Pusat edukasi AI & Automation terlengkap di Indonesia. Membantu Anda membangun sistem otomatis untuk bisnis.</p>
-          <div class="flex items-center gap-2">
-            <a href="https://www.instagram.com/kerjadengansistem/" target="_blank" rel="noopener" class="footer-social" aria-label="Instagram"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></a>
-            <a href="https://www.facebook.com/profile.php?id=61588153064812" target="_blank" rel="noopener" class="footer-social" aria-label="Facebook"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a>
-            <a href="https://www.threads.com/@kerjadengansistem" target="_blank" rel="noopener" class="footer-social" aria-label="Threads"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.59 12c.025 3.086.718 5.496 2.057 7.164 1.432 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.96-.065-1.187.408-2.26 1.33-3.017.88-.724 2.104-1.138 3.542-1.199 1.036-.044 2-.013 2.882.093-.2-1.265-.9-1.91-2.164-1.985-.93-.055-1.852.27-2.503.542l-.737-1.852c.853-.392 2.14-.824 3.58-.737 1.233.074 2.245.478 3.01 1.2.7.66 1.163 1.56 1.378 2.67.476.168.916.374 1.32.618 1.19.717 2.079 1.69 2.57 2.823.776 1.79.856 4.574-1.293 6.756C17.837 22.926 15.467 23.98 12.186 24z"/></svg></a>
-            <a href="https://www.youtube.com/@KerjaDengansistem" target="_blank" rel="noopener" class="footer-social" aria-label="YouTube"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
-            <a href="https://www.tiktok.com/@kerja.dengan.sist" target="_blank" rel="noopener" class="footer-social" aria-label="TikTok"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg></a>
+            
+            <div className="flex-1 overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
+              <table className="w-full text-left border-collapse min-w-[700px]">
+                <thead className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs sm:text-sm sticky top-0 z-10 shadow-sm border-b-2 border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="p-3 font-bold w-12 text-center">Status</th>
+                    <th className="p-3 font-bold">Tipe & Kategori</th>
+                    <th className="p-3 font-bold">Keterangan</th>
+                    <th className="p-3 font-bold text-right">Nominal</th>
+                    <th className="p-3 font-bold text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs sm:text-sm">
+                  {currentMonthPlans.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="text-center text-gray-500 py-12 bg-white dark:bg-gray-800 h-full">
+                        <ClipboardList size={40} className="mx-auto mb-3 opacity-20" />
+                        <p className="font-bold">Tidak ada rencana tercatat untuk bulan ini.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    currentMonthPlans.map((p) => (
+                      <tr key={p.id} className={`border-b border-gray-200 dark:border-gray-700 transition-colors ${p.isCompleted ? 'bg-gray-100 dark:bg-gray-800/50 opacity-60' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
+                        <td className="p-3 text-center">
+                          {p.isCompleted ? <CheckCircle2 size={20} className="text-green-500 mx-auto" /> : <Clock size={20} className="text-amber-500 mx-auto" />}
+                        </td>
+                        <td className="p-3">
+                          <p className="font-bold text-gray-900 dark:text-gray-100 truncate">{p.category}</p>
+                          <p className="text-[10px] sm:text-xs font-bold text-gray-500 mt-0.5">{p.type.toUpperCase()}</p>
+                        </td>
+                        <td className="p-3 text-gray-600 dark:text-gray-400 font-medium truncate">{p.description}</td>
+                        <td className="p-3 text-right font-black tracking-tight text-sm sm:text-base text-gray-800 dark:text-gray-200">{formatRupiah(p.amount)}</td>
+                        <td className="p-3 text-center flex justify-center gap-2">
+                          {!p.isCompleted && (
+                            <button onClick={() => executePlan(p)} className="flex items-center gap-1 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-800 px-2.5 py-1.5 rounded-lg font-bold transition-colors">
+                              <CheckCircle2 size={14} /> Eksekusi
+                            </button>
+                          )}
+                          <button onClick={() => deletePlan(p.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-1.5 rounded-lg transition-all" title="Hapus"><Trash2 size={16} /></button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-        <div>
-          <h4 class="font-display font-semibold text-white text-sm mb-4">Produk</h4>
-          <ul class="space-y-2.5">
-            <li><a href="#" class="text-gray-500 text-[13px] hover:text-gray-300 transition-colors">E-Book</a></li>
-            <li><a href="#" class="text-gray-500 text-[13px] hover:text-gray-300 transition-colors">Kursus Online</a></li>
-            <li><a href="#" class="text-gray-500 text-[13px] hover:text-gray-300 transition-colors">Template</a></li>
-            <li><a href="#" class="text-gray-500 text-[13px] hover:text-gray-300 transition-colors">Freebies</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-display font-semibold text-white text-sm mb-4">Perusahaan</h4>
-          <ul class="space-y-2.5">
-            <li><a href="#" class="text-gray-500 text-[13px] hover:text-gray-300 transition-colors">Tentang Kami</a></li>
-            <li><a href="#" class="text-gray-500 text-[13px] hover:text-gray-300 transition-colors">Blog</a></li>
-            <li><a href="#" class="text-gray-500 text-[13px] hover:text-gray-300 transition-colors">Kontak</a></li>
-            <li><a href="#" class="text-gray-500 text-[13px] hover:text-gray-300 transition-colors">Kebijakan Privasi</a></li>
-          </ul>
-        </div>
       </div>
-      <div class="border-t border-white/[0.04] pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <p class="text-gray-600 text-[12px]">&copy; 2026 Kerja dengan Sistem. All rights reserved.</p>
-        <p class="text-gray-700 text-[11px]">Dibangun dengan ❤️ untuk komunitas AI Indonesia</p>
+    );
+  };
+
+  const deleteSelectedTransactions = () => {
+    setModalState({
+      isOpen: true, type: 'confirm', title: 'Hapus Multi Transaksi', message: `Hapus ${selectedIds.size} transaksi terpilih secara permanen?`,
+      onConfirm: () => {
+        setTransactions(prev => prev.filter(t => !selectedIds.has(t.id)));
+        setSelectedIds(new Set()); setIsSelectMode(false);
+      }
+    });
+  };
+
+  const handleSubmitTransaction = (e) => {
+    e.preventDefault();
+    if (!formData.amount || formData.amount <= 0) return;
+
+    let finalType = formData.type; let finalCategory = formData.category;
+    let mapUpdated = false; let newCategoryMap = { ...categoryMap };
+
+    if (formData.type === 'Lainnya...' && formData.customType.trim() !== '') {
+      finalType = formData.customType.trim();
+      if (!newCategoryMap[finalType]) { newCategoryMap[finalType] = []; mapUpdated = true; }
+    }
+    if (formData.category === 'Lainnya...' && formData.customCategory.trim() !== '') {
+      finalCategory = formData.customCategory.trim();
+      if (!newCategoryMap[finalType].includes(finalCategory)) {
+        newCategoryMap[finalType] = [...(newCategoryMap[finalType] || []), finalCategory];
+        mapUpdated = true;
+      }
+    }
+    if (mapUpdated) setCategoryMap(newCategoryMap);
+
+    const newTransaction = {
+      id: Date.now().toString(), date: formData.date, type: finalType, category: finalCategory,
+      amount: parseFloat(formData.amount), description: formData.description || '-'
+    };
+
+    setTransactions([newTransaction, ...transactions]);
+    setFormData(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
+  };
+
+  const deleteTransactionItem = (id) => {
+    setModalState({
+      isOpen: true, type: 'confirm', title: 'Hapus Transaksi', message: 'Hapus transaksi ini? Saldo akan dikalkulasi ulang ke semula.',
+      onConfirm: () => setTransactions(prev => prev.filter(t => t.id !== id))
+    });
+  };
+
+  return (
+    <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'} transition-colors duration-300 p-3 sm:p-4 md:p-8 font-sans`}>
+      <div className="max-w-7xl mx-auto space-y-5 sm:space-y-8">
+        
+        {/* HEADER */}
+        <div className={`flex flex-col md:flex-row justify-between items-start md:items-center bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl gap-4 ${box3D}`}>
+          <div className="w-full flex justify-between md:block items-center">
+            <div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3 tracking-tight">
+                Dashboard Keuangan
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 font-medium mt-1 text-xs sm:text-sm">Pantau keuangan dengan mudah & modern</p>
+            </div>
+            <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 sm:p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors md:hidden">
+                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+          </div>
+
+          <div className="hidden md:block absolute right-6 top-6 md:static">
+             <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">
+                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+          </div>
+
+          {currentView === 'dashboard' && (
+            <div className="flex flex-col sm:flex-row w-full md:w-auto items-stretch sm:items-center gap-2 sm:gap-3 bg-gray-100 dark:bg-gray-900 p-2 sm:p-2.5 rounded-xl border-2 border-gray-200 dark:border-gray-700">
+              <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 pl-1 sm:pl-2">Filter:</span>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <select 
+                  value={globalFilterType} onChange={(e) => setGlobalFilterType(e.target.value)}
+                  className="bg-white dark:bg-gray-800 font-semibold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none focus:border-indigo-500 w-full sm:w-auto flex-1"
+                >
+                  <option value="month">Bulanan</option>
+                  <option value="date">Harian</option>
+                  <option value="all">Semua Waktu</option>
+                </select>
+                {globalFilterType === 'month' && <input type="month" value={globalFilterValue} onChange={(e) => setGlobalFilterValue(e.target.value)} className="bg-white dark:bg-gray-800 font-semibold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none w-full sm:w-auto flex-1" />}
+                {globalFilterType === 'date' && <input type="date" value={globalFilterValue} onChange={(e) => setGlobalFilterValue(e.target.value)} className="bg-white dark:bg-gray-800 font-semibold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none w-full sm:w-auto flex-1" />}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {currentView === 'savings' && renderSavingsView()}
+        {currentView === 'planner' && renderPlannerView()}
+
+        {currentView === 'dashboard' && (
+          <>
+            {/* Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+              <div onClick={() => setCurrentView('wallets')} className={`bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                <div className="p-2.5 sm:p-3 bg-blue-200 dark:bg-blue-700/50 text-blue-700 dark:text-blue-300 rounded-xl group-hover:scale-110 transition-transform border border-blue-300 dark:border-blue-600"><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 font-bold truncate">Saldo Dompet <span className="hidden sm:inline opacity-70 ml-1">(All)</span></p>
+                  <h3 className="text-lg sm:text-xl font-black text-blue-900 dark:text-blue-100 mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.saldoSaatIni)}</h3>
+                  <p className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 mt-1 opacity-80 sm:hidden">Klik detail ➔</p>
+                </div>
+              </div>
+              
+              <div onClick={() => { setHistoryType('pemasukan'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                <div className="p-2.5 sm:p-3 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-xl border border-green-200 dark:border-green-800 group-hover:scale-110 transition-transform"><TrendingUp size={20} className="sm:w-6 sm:h-6" /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-bold group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors truncate">Pemasukan <span className="hidden sm:inline opacity-70 ml-1">(Filter)</span></p>
+                  <h3 className="text-lg sm:text-xl font-black text-gray-800 dark:text-white mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.pemasukanFilter)}</h3>
+                  <p className="text-[10px] sm:text-xs text-green-600 dark:text-green-400 mt-1 opacity-80 sm:hidden">Klik riwayat ➔</p>
+                </div>
+              </div>
+              
+              <div onClick={() => { setHistoryType('pengeluaran'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                <div className="p-2.5 sm:p-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-800 group-hover:scale-110 transition-transform"><TrendingDown size={20} className="sm:w-6 sm:h-6" /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-bold group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors truncate">Pengeluaran <span className="hidden sm:inline opacity-70 ml-1">(Filter)</span></p>
+                  <h3 className="text-lg sm:text-xl font-black text-gray-800 dark:text-white mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.pengeluaranFilter)}</h3>
+                  <p className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 mt-1 opacity-80 sm:hidden">Klik riwayat ➔</p>
+                </div>
+              </div>
+              
+              <div onClick={() => setCurrentView('savings')} className={`bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/60 dark:to-purple-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                <div className="p-2.5 sm:p-3 bg-purple-200 dark:bg-purple-700/50 text-purple-700 dark:text-purple-300 rounded-xl group-hover:scale-110 transition-transform border border-purple-300 dark:border-purple-600"><PiggyBank size={20} className="sm:w-6 sm:h-6" /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-purple-800 dark:text-purple-300 font-bold truncate">Total Tabungan <span className="hidden sm:inline opacity-70 ml-1">(All)</span></p>
+                  <h3 className="text-lg sm:text-xl font-black text-purple-900 dark:text-purple-100 mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.totalTabungan)}</h3>
+                  <p className="text-[10px] sm:text-xs text-purple-600 dark:text-purple-400 mt-1 opacity-80 sm:hidden">Klik detail ➔</p>
+                </div>
+              </div>
+
+              {/* Rencana Bulanan Card */}
+              <div onClick={() => setCurrentView('planner')} className={`bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/60 dark:to-amber-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                <div className="p-2.5 sm:p-3 bg-amber-200 dark:bg-amber-700/50 text-amber-700 dark:text-amber-300 rounded-xl group-hover:scale-110 transition-transform border border-amber-300 dark:border-amber-600"><ClipboardList size={20} className="sm:w-6 sm:h-6" /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 font-bold truncate">Rencana Bulanan <span className="hidden sm:inline opacity-70 ml-1">(Plan)</span></p>
+                  <h3 className="text-lg sm:text-xl font-black text-amber-900 dark:text-amber-100 mt-0.5 sm:mt-1 tracking-tight truncate">{plans.filter(p => p.month === new Date().toISOString().slice(0,7) && !p.isCompleted).length} Tugas</h3>
+                  <p className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 mt-1 opacity-80 sm:hidden">Klik buat ➔</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Layout Grid - Responsive stacking & heights */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch lg:h-[680px]">
+              
+              {/* Form Input Container */}
+              <div className={`lg:col-span-4 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col ${box3D}`}>
+                <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-4 sm:mb-5 flex items-center gap-2 shrink-0">
+                  <PlusCircle size={20} className="text-indigo-600 dark:text-indigo-400 sm:w-[22px] sm:h-[22px]" /> Catat Transaksi
+                </h2>
+                
+                <div className="flex-1 lg:overflow-y-auto lg:pr-2 pb-1">
+                  <form onSubmit={handleSubmitTransaction} className="space-y-3 sm:space-y-4">
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Tanggal</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Calendar size={16} className="text-gray-500 sm:w-[18px] sm:h-[18px]" /></div>
+                        <input type="date" name="date" required value={formData.date} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors text-sm sm:text-base" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Jenis Transaksi</label>
+                      <select name="type" value={formData.type} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors cursor-pointer text-sm sm:text-base">
+                        {Object.keys(categoryMap).map(type => <option key={type} value={type}>{type}</option>)}
+                        <option value="Lainnya...">Lainnya...</option>
+                      </select>
+                      {formData.type === 'Lainnya...' && (
+                        <input type="text" name="customType" placeholder="Ketik jenis transaksi baru..." required value={formData.customType} onChange={handleInputChange} className="mt-2 w-full border-2 border-indigo-300 dark:border-indigo-600 rounded-lg p-2 sm:p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-gray-900 dark:text-white font-medium outline-none text-sm sm:text-base" />
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Kategori</label>
+                      <div 
+                        onClick={() => setCatDropdownOpen(!catDropdownOpen)}
+                        className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium flex justify-between items-center cursor-pointer select-none transition-colors focus:border-gray-900 dark:focus:border-gray-400 text-sm sm:text-base"
+                      >
+                        <span className="truncate pr-2">{formData.category}</span>
+                        <ChevronDown size={16} className="text-gray-500 shrink-0 sm:w-[18px] sm:h-[18px]" />
+                      </div>
+                      
+                      {catDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setCatDropdownOpen(false)}></div>
+                          <div className="absolute z-50 w-full mt-1 sm:mt-2 bg-white dark:bg-gray-800 border-2 border-gray-800 dark:border-gray-600 rounded-lg shadow-[4px_4px_0_0_#000000] max-h-48 overflow-y-auto">
+                            {(categoryMap[formData.type] || []).map(cat => (
+                              <div key={cat} className="flex justify-between items-center p-2.5 sm:p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer font-medium border-b border-gray-100 dark:border-gray-700 text-sm sm:text-base">
+                                <span onClick={() => handleCatSelect(cat)} className="flex-1 text-gray-900 dark:text-white truncate">{cat}</span>
+                                <div 
+                                  className="p-1 sm:p-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg ml-2 group transition-colors shrink-0"
+                                  onMouseDown={(e) => deleteCategoryFromMap(e, formData.type, cat)}
+                                >
+                                  <Trash2 size={14} className="text-gray-400 group-hover:text-red-500 sm:w-4 sm:h-4" />
+                                </div>
+                              </div>
+                            ))}
+                            <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer text-gray-900 dark:text-white font-bold text-sm sm:text-base" onClick={() => handleCatSelect('Lainnya...')}>
+                              + Tambah Lainnya...
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      {formData.category === 'Lainnya...' && (
+                        <input type="text" name="customCategory" placeholder="Ketik kategori baru..." required value={formData.customCategory} onChange={handleInputChange} className="mt-2 w-full border-2 border-indigo-300 dark:border-indigo-600 rounded-lg p-2 sm:p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-gray-900 dark:text-white font-medium outline-none text-sm sm:text-base" />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Nominal (Rp)</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign size={16} className="text-gray-500 sm:w-[18px] sm:h-[18px]" /></div>
+                        <input type="number" name="amount" placeholder="0" required value={formData.amount} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-black outline-none focus:border-gray-900 dark:focus:border-white transition-colors tracking-tight text-base sm:text-lg" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Keterangan</label>
+                      <input type="text" name="description" placeholder="Cth: Makan siang..." value={formData.description} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors text-sm sm:text-base" />
+                    </div>
+
+                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 sm:py-3.5 px-4 rounded-xl transition-all mt-4 sm:mt-6 border-2 border-indigo-900 shadow-[2px_2px_0_0_#312e81] active:shadow-none active:translate-y-[2px] text-sm sm:text-base">
+                      Simpan Transaksi
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Transaction History Container */}
+              <div className={`lg:col-span-8 bg-white dark:bg-gray-800 rounded-2xl flex flex-col h-[500px] lg:h-full overflow-hidden ${box3D}`}>
+                <div className="p-4 sm:p-6 border-b-2 border-gray-200 dark:border-gray-700 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 gap-3 sm:gap-0">
+                  <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white">Riwayat Transaksi</h2>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    {isSelectMode ? (
+                       <button onClick={deleteSelectedTransactions} disabled={selectedIds.size === 0} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold border-2 border-red-900 disabled:opacity-50 disabled:cursor-not-allowed shadow-[2px_2px_0_0_#7f1d1d] active:shadow-none active:translate-y-[2px] transition-all">
+                         <Trash2 size={14} className="sm:w-4 sm:h-4" /> Hapus ({selectedIds.size})
+                       </button>
+                    ) : (
+                      <button onClick={() => {
+                         const headers = ['ID,Tanggal,Tipe,Kategori,Nominal,Keterangan'];
+                         const csvData = transactions.map(t => `${t.id},${t.date},${t.type},${t.category},${t.amount},"${t.description.replace(/"/g, '""')}"`);
+                         const blob = new Blob([headers.concat(csvData).join('\n')], { type: 'text/csv;charset=utf-8;' });
+                         const link = document.createElement('a');
+                         link.href = URL.createObjectURL(blob);
+                         link.setAttribute('download', `Keuangan_${new Date().toISOString().split('T')[0]}.csv`);
+                         document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                      }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold border-2 border-green-900 shadow-[2px_2px_0_0_#14532d] active:shadow-none active:translate-y-[2px] transition-all">
+                        <Download size={14} className="sm:w-4 sm:h-4" /> Export CSV
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Scrollable Table Area */}
+                <div className="flex-1 overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-gray-900/50 relative">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs sm:text-sm sticky top-0 z-10 shadow-sm border-b-2 border-gray-200 dark:border-gray-700">
+                      <tr>
+                        {isSelectMode && <th className="p-2 sm:p-3 w-10 sm:w-12 text-center border-r border-gray-100 dark:border-gray-700">✓</th>}
+                        <th className="p-2 sm:p-3 font-bold whitespace-nowrap">Tanggal</th>
+                        <th className="p-2 sm:p-3 font-bold">Tipe</th>
+                        <th className="p-2 sm:p-3 font-bold">Kategori</th>
+                        <th className="p-2 sm:p-3 font-bold">Keterangan</th>
+                        <th className="p-2 sm:p-3 font-bold text-right">Nominal</th>
+                        <th className="p-2 sm:p-3 font-bold text-center">Aksi</th>
+                      </tr>
+                      <tr className="bg-gray-100 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-700">
+                        {isSelectMode && <th className="p-1 border-r border-gray-200 dark:border-gray-600"></th>}
+                        <th className="p-1 px-2">
+                          <input type="date" value={tableFilters.date} onChange={e => setTableFilters({...tableFilters, date: e.target.value})} className="w-full min-w-[110px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500" />
+                        </th>
+                        <th className="p-1 px-2">
+                          <select value={tableFilters.type} onChange={e => setTableFilters({...tableFilters, type: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500">
+                            <option value="">Semua</option>{uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </th>
+                        <th className="p-1 px-2">
+                          <select value={tableFilters.category} onChange={e => setTableFilters({...tableFilters, category: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500">
+                            <option value="">Semua</option>{uniqueCats.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </th>
+                        <th className="p-1 px-2">
+                          <input type="text" placeholder="Cari..." value={tableFilters.desc} onChange={e => setTableFilters({...tableFilters, desc: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500" />
+                        </th>
+                        <th className="p-1 px-2"></th>
+                        <th className="p-1 px-2 text-center">
+                          <button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedIds(new Set()); }} className={`text-[11px] sm:text-xs font-bold px-1.5 py-1.5 rounded w-full transition-colors ${isSelectMode ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 hover:bg-indigo-200'}`}>
+                            {isSelectMode ? 'Batal' : 'Pilih Baris'}
+                          </button>
+                        </th>
+                      </tr>
+                    </thead>
+                    
+                    <tbody className="text-xs sm:text-sm">
+                      {filteredForTable.length === 0 ? (
+                        <tr>
+                          <td colSpan={isSelectMode ? "7" : "6"} className="text-center text-gray-500 py-12 sm:py-16 bg-white dark:bg-gray-800 h-full">
+                            <Wallet size={40} className="mx-auto mb-3 opacity-20 sm:w-12 sm:h-12" />
+                            <p className="font-bold">Tidak ada transaksi ditemukan.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredForTable.map((t) => {
+                          const isIncome = t.type.toLowerCase().includes('pemasukan');
+                          const isSaving = t.type.toLowerCase().includes('tabungan');
+                          
+                          return (
+                            <tr key={t.id} className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                              {isSelectMode && (
+                                <td className="p-2 sm:p-3 text-center border-r border-gray-100 dark:border-gray-700">
+                                  <input 
+                                    type="checkbox" checked={selectedIds.has(t.id)} onChange={() => toggleSelectTransaction(t.id)} 
+                                    className="w-4 h-4 rounded cursor-pointer accent-indigo-600"
+                                  />
+                                </td>
+                              )}
+                              <td className="p-3 sm:p-4 text-gray-700 dark:text-gray-300 whitespace-nowrap font-medium">{t.date}</td>
+                              <td className="p-3 sm:p-4">
+                                <span className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-bold inline-block border whitespace-nowrap
+                                  ${isIncome ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' : 
+                                    isSaving ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-400' : 
+                                    'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400'}`}
+                                >
+                                  {t.type.toUpperCase()}
+                                </span>
+                              </td>
+                              <td className="p-3 sm:p-4 text-gray-900 dark:text-gray-100 font-bold max-w-[120px] truncate sm:max-w-none">{t.category}</td>
+                              <td className="p-3 sm:p-4 text-gray-600 dark:text-gray-400 font-medium max-w-[150px] truncate sm:max-w-none">{t.description}</td>
+                              <td className={`p-3 sm:p-4 text-right font-black whitespace-nowrap tracking-tight text-sm sm:text-base
+                                  ${isIncome ? 'text-green-600 dark:text-green-400' : 
+                                    isSaving ? 'text-purple-600 dark:text-purple-400' : 
+                                    'text-red-600 dark:text-red-400'}`}
+                              >
+                                {isIncome ? '+' : '-'}{formatRupiah(t.amount)}
+                              </td>
+                              <td className="p-3 sm:p-4 text-center">
+                                <button onClick={() => deleteTransactionItem(t.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-1.5 sm:p-2 rounded-lg transition-all" title="Hapus Permanen">
+                                  <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* --- CUSTOM GLOBAL MODAL --- */}
+        {modalState.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+            <div className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-2xl w-full max-w-[90%] sm:max-w-sm md:max-w-md ${box3D}`}>
+              <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-2">{modalState.title}</h3>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-5 sm:mb-6 font-medium leading-relaxed">{modalState.message}</p>
+              
+              {modalState.type === 'prompt' && (
+                <input 
+                  type={modalState.inputType} autoFocus value={modalState.inputValue}
+                  className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-black outline-none focus:border-indigo-500 mb-5 sm:mb-6 transition-colors"
+                  onChange={(e) => setModalState(prev => ({...prev, inputValue: e.target.value}))}
+                  onKeyDown={(e) => { if(e.key === 'Enter') { if(modalState.onConfirm) modalState.onConfirm(modalState.inputValue); closeModal(); } }}
+                />
+              )}
+
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-3">
+                {modalState.type !== 'alert' && (
+                  <button onClick={closeModal} className="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-bold rounded-lg transition-colors text-sm sm:text-base">Batal</button>
+                )}
+                <button 
+                  onClick={() => { if(modalState.onConfirm) modalState.onConfirm(modalState.inputValue); closeModal(); }} 
+                  className={`w-full sm:w-auto px-5 py-3 sm:py-2.5 text-white font-bold rounded-lg transition-all border-2 active:shadow-none active:translate-y-[2px] text-sm sm:text-base ${modalState.type === 'confirm' ? 'bg-red-600 hover:bg-red-700 border-red-900 shadow-[2px_2px_0_0_#7f1d1d]' : 'bg-indigo-600 hover:bg-indigo-700 border-indigo-900 shadow-[2px_2px_0_0_#312e81]'}`}
+                >
+                  {modalState.type === 'alert' ? 'OK Mengerti' : (modalState.type === 'confirm' ? 'Ya, Eksekusi' : 'Konfirmasi')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  </footer>
-
-  <script src="data/products.js"></script>
-  <script src="data/articles.js"></script>
-  <script src="script.js"></script>
-</body>
-</html>
+  );
+}
