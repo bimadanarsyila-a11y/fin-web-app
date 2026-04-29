@@ -18,18 +18,16 @@
 </head>
 <body class="antialiased bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
   
-  <!-- Root untuk aplikasi React -->
   <div id="root"></div>
 
-  <!-- Script Utama Aplikasi dengan dukungan ES Module -->
   <script type="text/babel" data-type="module">
-    // --- IMPORT DARI CDN MENGGUNAKAN ES MODULES ---
     import React, { useState, useEffect, useMemo } from 'https://esm.sh/react@18.2.0';
     import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
     import { 
       PlusCircle, Download, Wallet, TrendingUp, TrendingDown, PiggyBank, 
       Trash2, Calendar, DollarSign, Sun, Moon, ArrowLeft, Target, Edit2, 
-      ChevronDown, AlertCircle, Clock, CheckCircle2, CreditCard, Filter, ClipboardList, LogOut
+      ChevronDown, AlertCircle, Clock, CheckCircle2, CreditCard, Filter, 
+      ClipboardList, LogOut, Eye, EyeOff
     } from 'https://esm.sh/lucide-react@0.292.0';
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
@@ -39,7 +37,6 @@
     const SUPABASE_URL = 'https://ncwtnqmwzrnpgsvjhnwv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jd3RucW13enJucGdzdmpobnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjM4MzgsImV4cCI6MjA5MzAzOTgzOH0.tDBX2HOVcbkY4rw8yTIXAy5t_KvSjdFfU-HiDnW4mQg';
     
-    // Inisialisasi Supabase
     let supabase = null;
     let isSupabaseConfigured = false;
     
@@ -52,16 +49,13 @@
       console.warn("Konfigurasi Supabase belum valid.");
     }
 
-    // --- KONSTANTA GLOBAL ---
     const box3D = "border-2 border-gray-900 dark:border-gray-600 shadow-[4px_4px_0_0_#111827] dark:shadow-[4px_4px_0_0_#000000] transition-all";
     const box3DHover = "hover:shadow-[6px_6px_0_0_#111827] dark:hover:shadow-[6px_6px_0_0_#000000] hover:-translate-y-0.5 transition-all";
 
-    // --- KOMPONEN UTAMA ---
     function App() {
       const [session, setSession] = useState(null);
       const [isLoading, setIsLoading] = useState(true);
 
-      // Cek sesi login
       useEffect(() => {
         if (!isSupabaseConfigured) {
           setIsLoading(false);
@@ -69,9 +63,7 @@
         }
 
         supabase.auth.getSession().then(({ data: { session }, error }) => {
-          if (!error) {
-            setSession(session);
-          }
+          if (!error) setSession(session);
           setIsLoading(false);
         });
 
@@ -84,7 +76,6 @@
 
       if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-500 font-bold">Memuat Aplikasi...</div>;
 
-      // Peringatan jika Supabase belum dikonfigurasi
       if (!isSupabaseConfigured) {
         return (
           <div className="min-h-screen flex items-center justify-center p-4">
@@ -102,7 +93,6 @@
         );
       }
 
-      // Jika belum login, tampilkan layar login
       if (!session) {
         return (
           <div className="min-h-screen flex items-center justify-center p-4">
@@ -129,12 +119,12 @@
         );
       }
 
-      // Jika sudah login, tampilkan Dashboard Utama
       return <Dashboard user={session.user} onLogout={() => supabase.auth.signOut()} />;
     }
 
     function Dashboard({ user, onLogout }) {
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem('finance_theme') === 'dark');
+      const [showBalance, setShowBalance] = useState(() => localStorage.getItem('finance_show_balance') !== 'false');
       const [currentView, setCurrentView] = useState('dashboard');
       const [isFetchingData, setIsFetchingData] = useState(true);
 
@@ -151,7 +141,25 @@
         'Tabungan': ['Dana Darurat', 'Investasi', 'Tabungan Liburan']
       };
 
-      // FETCH DATA DARI SUPABASE
+      // URL Hash Routing (Back button & Refresh support)
+      useEffect(() => {
+        const handleHashChange = () => {
+          const hash = window.location.hash.replace('#', '');
+          if (['dashboard', 'savings', 'wallets', 'history', 'planner'].includes(hash)) {
+            setCurrentView(hash);
+          } else {
+            setCurrentView('dashboard');
+          }
+        };
+        handleHashChange();
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+      }, []);
+
+      const navigateTo = (view) => {
+        window.location.hash = view;
+      };
+
       useEffect(() => {
         const loadData = async () => {
           setIsFetchingData(true);
@@ -163,13 +171,11 @@
               supabase.from('plans').select('*').order('month', { ascending: false }),
               supabase.from('categories').select('*')
             ]);
-
             if (txRes.data) setTransactions(txRes.data);
             if (walletRes.data) setWallets(walletRes.data);
             if (goalsRes.data) setGoals(goalsRes.data);
             if (plansRes.data) setPlans(plansRes.data);
             if (catRes.data) setCustomCategories(catRes.data);
-
           } catch (error) {
             console.error("Error fetching data:", error);
           } finally {
@@ -179,7 +185,6 @@
         loadData();
       }, []);
 
-      // Gabungkan kategori default dengan kategori kustom dari database
       const categoryMap = useMemo(() => {
         const map = { ...initialCategoryMap };
         customCategories.forEach(c => {
@@ -212,7 +217,7 @@
       const [goalForm, setGoalForm] = useState({ name: '', target: '', date: '', urgency: 'sedang' });
       
       const [planForm, setPlanForm] = useState({
-        month: new Date().toISOString().slice(0, 7), type: 'Pengeluaran Harian', customType: '', category: 'Makan & Minum', customCategory: '', amount: '', description: ''
+        month: new Date().toISOString().slice(0, 7), type: 'Biaya Bulanan', customType: '', category: 'Listrik & Air', customCategory: '', amount: '', description: ''
       });
 
       const [showWalletForm, setShowWalletForm] = useState(false);
@@ -230,7 +235,12 @@
         else document.documentElement.classList.remove('dark');
       }, [darkMode]);
 
+      useEffect(() => {
+        localStorage.setItem('finance_show_balance', showBalance);
+      }, [showBalance]);
+
       const formatRupiah = (number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number || 0);
+      const renderAmount = (amount) => showBalance ? formatRupiah(amount) : 'Rp •••••••';
 
       const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -308,7 +318,6 @@
 
       const sumOfWallets = wallets.reduce((acc, w) => acc + w.balance, 0);
 
-      // --- SUPABASE CRUD TRANSACTIONS ---
       const handleSubmitTransaction = async (e) => {
         e.preventDefault();
         const parsedAmount = parseInt(formData.amount.replace(/[^0-9]/g, ''), 10);
@@ -321,7 +330,6 @@
         }
         if (formData.category === 'Lainnya...' && formData.customCategory.trim() !== '') {
           finalCategory = formData.customCategory.trim();
-          // Simpan ke DB Categories jika baru
           if (!categoryMap[finalType]?.includes(finalCategory)) {
             const { data, error } = await supabase.from('categories').insert([{ user_id: user.id, type: finalType, name: finalCategory }]).select();
             if (error) return setModalState({ isOpen: true, type: 'alert', title: 'Gagal Simpan Kategori', message: error.message });
@@ -369,7 +377,6 @@
         });
       };
 
-      // --- SUPABASE CRUD SAVINGS ---
       const renderSavingsView = () => {
         const handleGoalSubmit = async (e) => {
           e.preventDefault();
@@ -418,13 +425,13 @@
         return (
           <div className="space-y-4 sm:space-y-6 animate-fadeIn">
             <div className="flex items-center gap-3 sm:gap-4">
-              <button onClick={() => setCurrentView('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}><ArrowLeft size={18} className="sm:w-5 sm:h-5" /></button>
+              <button onClick={() => navigateTo('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}><ArrowLeft size={18} className="sm:w-5 sm:h-5" /></button>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><Target className="text-purple-500 w-5 h-5 sm:w-6 sm:h-6" /> Target Tabungan</h2>
             </div>
             <div className={`bg-purple-100 dark:bg-purple-900/30 p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${box3D}`}>
               <div className="w-full md:w-auto">
                 <p className="text-purple-800 dark:text-purple-300 font-bold text-sm sm:text-base">Total Seluruh Tabungan</p>
-                <h3 className="text-2xl sm:text-3xl font-black text-purple-900 dark:text-purple-100 mt-1 tracking-tight truncate">{formatRupiah(stats.totalTabungan)}</h3>
+                <h3 className="text-2xl sm:text-3xl font-black text-purple-900 dark:text-purple-100 mt-1 tracking-tight truncate">{renderAmount(stats.totalTabungan)}</h3>
               </div>
               <button onClick={() => setShowGoalForm(!showGoalForm)} className={`w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 sm:py-2.5 rounded-lg font-bold ${box3DHover}`}>{showGoalForm ? "Batal" : "+ Buat Target Baru"}</button>
             </div>
@@ -454,11 +461,11 @@
                 return (
                   <div key={goal.id} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl relative flex flex-col ${box3D}`}>
                     <button onClick={() => deleteGoal(goal.id)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
-                    <div className="flex items-center gap-2 mb-4"><UrgencyIcon size={20} className={iconColor} /><h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 pr-6 truncate">{goal.name}</h3></div>
+                    <div className="flex items-center gap-2 mb-4"><UrgencyIcon size={20} className={iconColor} /><h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 pr-6 break-words whitespace-normal leading-tight">{goal.name}</h3></div>
                     {goal.date && <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-1.5"><Calendar size={14}/> Target: {goal.date}</p>}
                     <div className="mt-auto">
-                      <div className="flex justify-between text-xs sm:text-sm mb-1 font-bold"><span className="text-gray-500 dark:text-gray-400">Terkumpul</span><span className="text-gray-800 dark:text-gray-200">{formatRupiah(goal.saved)}</span></div>
-                      <div className="flex justify-between text-xs sm:text-sm mb-4 font-bold"><span className="text-gray-500 dark:text-gray-400">Target</span><span className="text-gray-800 dark:text-gray-200">{formatRupiah(goal.target)}</span></div>
+                      <div className="flex justify-between text-xs sm:text-sm mb-1 font-bold"><span className="text-gray-500 dark:text-gray-400">Terkumpul</span><span className="text-gray-800 dark:text-gray-200">{renderAmount(goal.saved)}</span></div>
+                      <div className="flex justify-between text-xs sm:text-sm mb-4 font-bold"><span className="text-gray-500 dark:text-gray-400">Target</span><span className="text-gray-800 dark:text-gray-200">{renderAmount(goal.target)}</span></div>
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 sm:h-4 mb-2 overflow-hidden border border-gray-300 dark:border-gray-600"><div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
                       <p className="text-xs sm:text-sm text-right text-purple-600 dark:text-purple-400 font-black mb-4 sm:mb-5">{progress.toFixed(1)}%</p>
                       <button onClick={() => updateGoalSaved(goal.id, goal.saved)} className="w-full flex items-center justify-center gap-2 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 py-2.5 rounded-lg font-bold transition-colors text-sm"><Edit2 size={16} /> Update Saldo</button>
@@ -518,7 +525,7 @@
         return (
           <div className="space-y-4 sm:space-y-6 animate-fadeIn">
             <div className="flex items-center gap-3 sm:gap-4">
-              <button onClick={() => setCurrentView('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}>
+              <button onClick={() => navigateTo('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}>
                 <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
               </button>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><CreditCard className="text-blue-500 w-5 h-5 sm:w-6 sm:h-6" /> Dompet & Rekening</h2>
@@ -527,10 +534,10 @@
             <div className={`bg-blue-100 dark:bg-blue-900/30 p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${box3D}`}>
               <div className="w-full md:w-auto">
                 <p className="text-blue-800 dark:text-blue-300 font-bold text-sm sm:text-base">Saldo Sistem (Kalkulasi Transaksi)</p>
-                <h3 className="text-2xl sm:text-3xl font-black text-blue-900 dark:text-blue-100 mt-1 tracking-tight truncate">{formatRupiah(stats.saldoSaatIni)}</h3>
+                <h3 className="text-2xl sm:text-3xl font-black text-blue-900 dark:text-blue-100 mt-1 tracking-tight truncate">{renderAmount(stats.saldoSaatIni)}</h3>
                 {sumOfWallets !== stats.saldoSaatIni && (
                   <p className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 mt-2 flex items-start sm:items-center gap-1.5 bg-blue-200 dark:bg-blue-800/50 px-3 py-1.5 rounded-lg break-words w-full">
-                    <AlertCircle size={14} className="shrink-0 mt-0.5 sm:mt-0"/> <span>Selisih {formatRupiah(Math.abs(stats.saldoSaatIni - sumOfWallets))} antara Sistem dan Total Dompet.</span>
+                    <AlertCircle size={14} className="shrink-0 mt-0.5 sm:mt-0"/> <span>Selisih {renderAmount(Math.abs(stats.saldoSaatIni - sumOfWallets))} antara Sistem dan Total Dompet.</span>
                   </p>
                 )}
               </div>
@@ -569,8 +576,8 @@
                     setWallets(wallets.filter(w => w.id !== wallet.id)); 
                   } })} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
                   <div className={`p-2.5 sm:p-3 rounded-xl inline-block mb-3 sm:mb-4 shadow-sm ${wallet.color}`}><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 pr-6 truncate">{wallet.name}</h3>
-                  <p className="text-xl sm:text-2xl font-black text-gray-800 dark:text-gray-200 my-1.5 sm:my-2 tracking-tight truncate">{formatRupiah(wallet.balance)}</p>
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 pr-6 break-words leading-tight">{wallet.name}</h3>
+                  <p className="text-xl sm:text-2xl font-black text-gray-800 dark:text-gray-200 my-1.5 sm:my-2 tracking-tight truncate">{renderAmount(wallet.balance)}</p>
                   <button onClick={() => updateWalletBalance(wallet.id)} className="w-full flex items-center justify-center gap-2 mt-4 sm:mt-5 border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 py-2.5 rounded-lg font-bold transition-colors text-sm"><Edit2 size={16} /> Sesuaikan Saldo</button>
                 </div>
               ))}
@@ -611,14 +618,14 @@
         return (
           <div className="space-y-4 sm:space-y-6 animate-fadeIn">
             <div className="flex items-center gap-3 sm:gap-4">
-              <button onClick={() => { setCurrentView('dashboard'); setHistoryCatFilter(''); setHistoryTimeFilterType('all'); }} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}><ArrowLeft size={18} className="sm:w-5 sm:h-5" /></button>
+              <button onClick={() => { navigateTo('dashboard'); setHistoryCatFilter(''); setHistoryTimeFilterType('all'); }} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}><ArrowLeft size={18} className="sm:w-5 sm:h-5" /></button>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><IconComponent className={`${iconColorClass} w-5 h-5 sm:w-6 sm:h-6`} /> {title}</h2>
             </div>
 
             <div className={`${headerBgClass} p-4 sm:p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 ${box3D}`}>
               <div className="w-full lg:w-auto">
                 <p className={`${textColorClass} font-bold text-sm sm:text-base`}>Total {historyTimeFilterType === 'all' ? '(Semua Waktu)' : historyTimeFilterType === 'month' ? '(Bulan Ini)' : '(Harian)'}</p>
-                <h3 className={`text-2xl sm:text-3xl font-black ${amountColorClass} mt-1 tracking-tight truncate`}>{formatRupiah(totalNominal)}</h3>
+                <h3 className={`text-2xl sm:text-3xl font-black ${amountColorClass} mt-1 tracking-tight truncate`}>{renderAmount(totalNominal)}</h3>
               </div>
               <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-3">
                  <div className="flex flex-1 sm:flex-none items-center gap-2 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-500 rounded-lg p-2.5 sm:p-2 shadow-sm">
@@ -680,6 +687,9 @@
       };
 
       const renderPlannerView = () => {
+        // Hanya memunculkan Pengeluaran di Form Rencana
+        const plannerAllowedTypes = ['Biaya Bulanan', 'Pengeluaran Harian'];
+
         const handlePlanSubmit = async (e) => {
           e.preventDefault();
           const parsedAmount = parseInt(planForm.amount.replace(/[^0-9]/g, ''), 10);
@@ -738,7 +748,7 @@
         return (
           <div className="space-y-4 sm:space-y-6 animate-fadeIn">
             <div className="flex items-center gap-3 sm:gap-4">
-              <button onClick={() => setCurrentView('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}><ArrowLeft size={18} className="sm:w-5 sm:h-5" /></button>
+              <button onClick={() => navigateTo('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}><ArrowLeft size={18} className="sm:w-5 sm:h-5" /></button>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><ClipboardList className="text-amber-500 w-5 h-5 sm:w-6 sm:h-6" /> Rencana Bulanan</h2>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
@@ -748,7 +758,10 @@
                   <div><label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Bulan Rencana</label><input type="month" required value={planForm.month} onChange={e => setPlanForm({...planForm, month: e.target.value})} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors" /></div>
                   <div>
                     <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Jenis Transaksi</label>
-                    <select value={planForm.type} onChange={e => { const val = e.target.value; const isCustom = val === 'Lainnya...'; setPlanForm({...planForm, type: val, category: isCustom ? 'Lainnya...' : (categoryMap[val] ? categoryMap[val][0] : ''), customType: isCustom ? planForm.customType : '', customCategory: isCustom ? planForm.customCategory : ''}); }} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 transition-colors cursor-pointer">{Object.keys(categoryMap).map(type => <option key={type} value={type}>{type}</option>)}<option value="Lainnya...">Lainnya...</option></select>
+                    <select value={planForm.type} onChange={e => { const val = e.target.value; const isCustom = val === 'Lainnya...'; setPlanForm({...planForm, type: val, category: isCustom ? 'Lainnya...' : (categoryMap[val] ? categoryMap[val][0] : ''), customType: isCustom ? planForm.customType : '', customCategory: isCustom ? planForm.customCategory : ''}); }} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 transition-colors cursor-pointer">
+                      {Object.keys(categoryMap).filter(type => plannerAllowedTypes.includes(type)).map(type => <option key={type} value={type}>{type}</option>)}
+                      <option value="Lainnya...">Lainnya...</option>
+                    </select>
                     {planForm.type === 'Lainnya...' && <input type="text" placeholder="Ketik jenis baru..." required value={planForm.customType} onChange={e => setPlanForm({...planForm, customType: e.target.value})} className="mt-2 w-full border-2 border-amber-300 dark:border-amber-600 rounded-lg p-2.5 bg-amber-50 dark:bg-amber-900/20 text-gray-900 dark:text-white outline-none" />}
                   </div>
                   <div className="relative">
@@ -784,7 +797,7 @@
                 <div className="p-4 sm:p-6 border-b-2 border-gray-200 dark:border-gray-700 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 gap-3 sm:gap-0">
                   <div>
                     <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white">Daftar Rencana Bulan {planForm.month}</h2>
-                    <p className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">Total Dianggarkan: {formatRupiah(totalPlannedAmount)}</p>
+                    <p className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">Total Dianggarkan: {renderAmount(totalPlannedAmount)}</p>
                   </div>
                 </div>
                 <div className="flex-1 overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
@@ -824,31 +837,39 @@
             
             {/* HEADER */}
             <div className={`flex flex-col md:flex-row justify-between items-start md:items-center bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl gap-4 ${box3D}`}>
-              <div className="w-full flex justify-between md:block items-center">
+              <div className="w-full flex justify-between items-center">
                 <div>
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3 tracking-tight">
                     Dashboard Keuangan
                   </h1>
                   <p className="text-gray-600 dark:text-gray-400 font-medium mt-1 text-xs sm:text-sm">Pantau keuangan dengan mudah & modern</p>
                 </div>
-                <div className="flex items-center gap-3 md:hidden">
-                  <button onClick={onLogout} className="p-2 sm:p-2.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Logout"><LogOut size={20} /></button>
-                  <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 sm:p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">
+                
+                {/* Header Actions (Mata, Darkmode, Profile) */}
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <button onClick={() => setShowBalance(!showBalance)} className="p-2 sm:p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors" title="Sembunyikan Saldo">
+                      {showBalance ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                  <button onClick={() => setDarkMode(!darkMode)} className="p-2 sm:p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">
                       {darkMode ? <Sun size={20} /> : <Moon size={20} />}
                   </button>
+                  
+                  {/* Avatar Profile */}
+                  <div className="relative group cursor-pointer ml-1 sm:ml-2">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-700 shadow-sm">
+                        {user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    {/* Dropdown Menu Profile */}
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-[4px_4px_0_0_#111827] dark:shadow-[4px_4px_0_0_#000000] border-2 border-gray-900 dark:border-gray-600 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                        <div className="p-3 border-b-2 border-gray-100 dark:border-gray-700 text-xs font-bold text-gray-500 dark:text-gray-400 truncate" title={user?.email}>{user?.email}</div>
+                        <button onClick={onLogout} className="w-full text-left px-4 py-3 text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors"><LogOut size={16} /> Keluar Aplikasi</button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="hidden md:flex absolute right-6 top-6 md:static items-center gap-3">
-                 <div className="text-sm font-bold text-gray-500 mr-2">{user?.email}</div>
-                 <button onClick={onLogout} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Logout"><LogOut size={20} /></button>
-                 <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">
-                    {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                  </button>
-              </div>
-
               {currentView === 'dashboard' && (
-                <div className="flex flex-col sm:flex-row w-full md:w-auto items-stretch sm:items-center gap-2 sm:gap-3 bg-gray-100 dark:bg-gray-900 p-2 sm:p-2.5 rounded-xl border-2 border-gray-200 dark:border-gray-700">
+                <div className="flex flex-col sm:flex-row w-full md:w-auto items-stretch sm:items-center gap-2 sm:gap-3 bg-gray-100 dark:bg-gray-900 p-2 sm:p-2.5 rounded-xl border-2 border-gray-200 dark:border-gray-700 mt-2 md:mt-0">
                   <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 pl-1 sm:pl-2">Filter:</span>
                   <div className="flex gap-2 w-full sm:w-auto">
                     <select 
@@ -877,48 +898,43 @@
                   <>
                     {/* Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-                      <div onClick={() => setCurrentView('wallets')} className={`bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                      <div onClick={() => navigateTo('wallets')} className={`bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
                         <div className="p-2.5 sm:p-3 bg-blue-200 dark:bg-blue-700/50 text-blue-700 dark:text-blue-300 rounded-xl group-hover:scale-110 transition-transform border border-blue-300 dark:border-blue-600"><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 font-bold truncate">Saldo Dompet <span className="hidden sm:inline opacity-70 ml-1">(All)</span></p>
-                          <h3 className="text-lg sm:text-xl font-black text-blue-900 dark:text-blue-100 mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.saldoSaatIni)}</h3>
-                          <p className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 mt-1 opacity-80 sm:hidden">Klik detail ➔</p>
+                          <p className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-300 font-bold leading-snug">Saldo Dompet <span className="block opacity-75 font-normal mt-0.5">Semua Waktu</span></p>
+                          <h3 className="text-base sm:text-lg lg:text-xl font-black text-blue-900 dark:text-blue-100 mt-1 sm:mt-1.5 tracking-tight break-words">{renderAmount(stats.saldoSaatIni)}</h3>
                         </div>
                       </div>
                       
-                      <div onClick={() => { setHistoryType('pemasukan'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                      <div onClick={() => { setHistoryType('pemasukan'); navigateTo('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
                         <div className="p-2.5 sm:p-3 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-xl border border-green-200 dark:border-green-800 group-hover:scale-110 transition-transform"><TrendingUp size={20} className="sm:w-6 sm:h-6" /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-bold group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors truncate">Pemasukan <span className="hidden sm:inline opacity-70 ml-1">(Filter)</span></p>
-                          <h3 className="text-lg sm:text-xl font-black text-gray-800 dark:text-white mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.pemasukanFilter)}</h3>
-                          <p className="text-[10px] sm:text-xs text-green-600 dark:text-green-400 mt-1 opacity-80 sm:hidden">Klik riwayat ➔</p>
+                          <p className="text-[11px] sm:text-xs text-green-800 dark:text-green-300 font-bold leading-snug">Pemasukan <span className="block opacity-75 font-normal mt-0.5">Filter Data</span></p>
+                          <h3 className="text-base sm:text-lg lg:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tight break-words">{renderAmount(stats.pemasukanFilter)}</h3>
                         </div>
                       </div>
                       
-                      <div onClick={() => { setHistoryType('pengeluaran'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                      <div onClick={() => { setHistoryType('pengeluaran'); navigateTo('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
                         <div className="p-2.5 sm:p-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-800 group-hover:scale-110 transition-transform"><TrendingDown size={20} className="sm:w-6 sm:h-6" /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-bold group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors truncate">Pengeluaran <span className="hidden sm:inline opacity-70 ml-1">(Filter)</span></p>
-                          <h3 className="text-lg sm:text-xl font-black text-gray-800 dark:text-white mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.pengeluaranFilter)}</h3>
-                          <p className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 mt-1 opacity-80 sm:hidden">Klik riwayat ➔</p>
+                          <p className="text-[11px] sm:text-xs text-red-800 dark:text-red-300 font-bold leading-snug">Pengeluaran <span className="block opacity-75 font-normal mt-0.5">Filter Data</span></p>
+                          <h3 className="text-base sm:text-lg lg:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tight break-words">{renderAmount(stats.pengeluaranFilter)}</h3>
                         </div>
                       </div>
                       
-                      <div onClick={() => setCurrentView('savings')} className={`bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/60 dark:to-purple-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                      <div onClick={() => navigateTo('savings')} className={`bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/60 dark:to-purple-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
                         <div className="p-2.5 sm:p-3 bg-purple-200 dark:bg-purple-700/50 text-purple-700 dark:text-purple-300 rounded-xl group-hover:scale-110 transition-transform border border-purple-300 dark:border-purple-600"><PiggyBank size={20} className="sm:w-6 sm:h-6" /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm text-purple-800 dark:text-purple-300 font-bold truncate">Total Tabungan <span className="hidden sm:inline opacity-70 ml-1">(All)</span></p>
-                          <h3 className="text-lg sm:text-xl font-black text-purple-900 dark:text-purple-100 mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.totalTabungan)}</h3>
-                          <p className="text-[10px] sm:text-xs text-purple-600 dark:text-purple-400 mt-1 opacity-80 sm:hidden">Klik detail ➔</p>
+                          <p className="text-[11px] sm:text-xs text-purple-800 dark:text-purple-300 font-bold leading-snug">Total Tabungan <span className="block opacity-75 font-normal mt-0.5">Semua Waktu</span></p>
+                          <h3 className="text-base sm:text-lg lg:text-xl font-black text-purple-900 dark:text-purple-100 mt-1 sm:mt-1.5 tracking-tight break-words">{renderAmount(stats.totalTabungan)}</h3>
                         </div>
                       </div>
 
-                      <div onClick={() => setCurrentView('planner')} className={`bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/60 dark:to-amber-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                      <div onClick={() => navigateTo('planner')} className={`bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/60 dark:to-amber-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
                         <div className="p-2.5 sm:p-3 bg-amber-200 dark:bg-amber-700/50 text-amber-700 dark:text-amber-300 rounded-xl group-hover:scale-110 transition-transform border border-amber-300 dark:border-amber-600"><ClipboardList size={20} className="sm:w-6 sm:h-6" /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 font-bold truncate">Rencana Bulanan <span className="hidden sm:inline opacity-70 ml-1">(Plan)</span></p>
-                          <h3 className="text-lg sm:text-xl font-black text-amber-900 dark:text-amber-100 mt-0.5 sm:mt-1 tracking-tight truncate">{plans.filter(p => p.month === new Date().toISOString().slice(0,7) && !p.is_completed).length} Tugas</h3>
-                          <p className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 mt-1 opacity-80 sm:hidden">Klik buat ➔</p>
+                          <p className="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300 font-bold leading-snug">Rencana Bulanan <span className="block opacity-75 font-normal mt-0.5">Bulan Ini</span></p>
+                          <h3 className="text-base sm:text-lg lg:text-xl font-black text-amber-900 dark:text-amber-100 mt-1 sm:mt-1.5 tracking-tight break-words">{plans.filter(p => p.month === new Date().toISOString().slice(0,7) && !p.is_completed).length} Tugas</h3>
                         </div>
                       </div>
                     </div>
@@ -1024,7 +1040,7 @@
                                       <td className="p-3 sm:p-4"><span className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-bold inline-block border whitespace-nowrap ${isIncome ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' : isSaving ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-400' : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400'}`}>{t.type.toUpperCase()}</span></td>
                                       <td className="p-3 sm:p-4 text-gray-900 dark:text-gray-100 font-bold max-w-[120px] truncate sm:max-w-none">{t.category}</td>
                                       <td className="p-3 sm:p-4 text-gray-600 dark:text-gray-400 font-medium max-w-[150px] truncate sm:max-w-none">{t.description}</td>
-                                      <td className={`p-3 sm:p-4 text-right font-black whitespace-nowrap tracking-tight text-sm sm:text-base ${isIncome ? 'text-green-600 dark:text-green-400' : isSaving ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}`}>{isIncome ? '+' : '-'}{formatRupiah(t.amount)}</td>
+                                      <td className={`p-3 sm:p-4 text-right font-black whitespace-nowrap tracking-tight text-sm sm:text-base ${isIncome ? 'text-green-600 dark:text-green-400' : isSaving ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}`}>{isIncome ? '+' : '-'}{renderAmount(t.amount)}</td>
                                       <td className="p-3 sm:p-4 text-center"><button onClick={() => deleteTransactionItem(t.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-1.5 sm:p-2 rounded-lg transition-all" title="Hapus Permanen"><Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button></td>
                                     </tr>
                                   );
