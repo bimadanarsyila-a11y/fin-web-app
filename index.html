@@ -29,8 +29,28 @@
     import { 
       PlusCircle, Download, Wallet, TrendingUp, TrendingDown, PiggyBank, 
       Trash2, Calendar, DollarSign, Sun, Moon, ArrowLeft, Target, Edit2, 
-      ChevronDown, AlertCircle, Clock, CheckCircle2, CreditCard, Filter, ClipboardList 
+      ChevronDown, AlertCircle, Clock, CheckCircle2, CreditCard, Filter, ClipboardList, LogOut
     } from 'https://esm.sh/lucide-react@0.292.0';
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+
+    // ==========================================
+    // MASUKKAN KREDENSIAL SUPABASE ANDA DI SINI
+    // ==========================================
+    const SUPABASE_URL = 'https://ncwtnqmwzrnpgsvjhnwv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jd3RucW13enJucGdzdmpobnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjM4MzgsImV4cCI6MjA5MzAzOTgzOH0.tDBX2HOVcbkY4rw8yTIXAy5t_KvSjdFfU-HiDnW4mQg';
+    
+    // Inisialisasi Supabase (Dengan pengecekan URL yang valid agar tidak crash)
+    let supabase = null;
+    let isSupabaseConfigured = false;
+    
+    try {
+      if (SUPABASE_URL.startsWith('http://') || SUPABASE_URL.startsWith('https://')) {
+        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        isSupabaseConfigured = true;
+      }
+    } catch (error) {
+      console.warn("Konfigurasi Supabase belum valid.");
+    }
 
     // --- KONSTANTA GLOBAL ---
     const box3D = "border-2 border-gray-900 dark:border-gray-600 shadow-[4px_4px_0_0_#111827] dark:shadow-[4px_4px_0_0_#000000] transition-all";
@@ -38,33 +58,91 @@
 
     // --- KOMPONEN UTAMA ---
     function App() {
-      // --- STATES ---
+      const [session, setSession] = useState(null);
+      const [isLoading, setIsLoading] = useState(true);
+
+      // Cek sesi login
+      useEffect(() => {
+        if (!isSupabaseConfigured) {
+          setIsLoading(false);
+          return;
+        }
+
+        supabase.auth.getSession().then(({ data: { session }, error }) => {
+          if (!error) {
+            setSession(session);
+          }
+          setIsLoading(false);
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          setSession(session);
+        });
+
+        return () => subscription.unsubscribe();
+      }, []);
+
+      if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-500 font-bold">Memuat Aplikasi...</div>;
+
+      // Peringatan jika Supabase belum dikonfigurasi
+      if (!isSupabaseConfigured) {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <div className={`bg-white dark:bg-gray-800 p-8 rounded-2xl max-w-md w-full text-center ${box3D}`}>
+              <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">Koneksi Database</h1>
+              <p className="text-gray-500 dark:text-gray-400 font-medium mb-6">Aplikasi ini membutuhkan koneksi Supabase untuk menyimpan data.</p>
+              <div className="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-4 rounded-xl text-left border border-gray-200 dark:border-gray-600">
+                Silakan ganti variabel <br/>
+                <code className="text-indigo-600 dark:text-indigo-400 font-black">SUPABASE_URL</code> dan <code className="text-indigo-600 dark:text-indigo-400 font-black">SUPABASE_ANON_KEY</code> <br/>
+                di dalam kode <code className="bg-gray-200 dark:bg-gray-600 px-1 rounded">index.html</code> dengan kunci API dari dasbor Supabase Anda.
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Jika belum login, tampilkan layar login
+      if (!session) {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <div className={`bg-white dark:bg-gray-800 p-8 rounded-2xl max-w-md w-full text-center ${box3D}`}>
+              <div className="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Wallet size={32} />
+              </div>
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">KeuanganKu</h1>
+              <p className="text-gray-500 dark:text-gray-400 font-medium mb-8">Pantau keuangan dengan mudah, sinkron di semua perangkat Anda.</p>
+              <button 
+                onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
+                className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white border-2 border-gray-300 dark:border-gray-600 py-3.5 px-4 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors shadow-[2px_2px_0_0_#111827] dark:shadow-[2px_2px_0_0_#ffffff] active:translate-y-[2px] active:shadow-none"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Lanjutkan dengan Google
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // Jika sudah login, tampilkan Dashboard Utama
+      return <Dashboard user={session.user} onLogout={() => supabase.auth.signOut()} />;
+    }
+
+    function Dashboard({ user, onLogout }) {
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem('finance_theme') === 'dark');
       const [currentView, setCurrentView] = useState('dashboard');
+      const [isFetchingData, setIsFetchingData] = useState(true);
 
-      const [transactions, setTransactions] = useState(() => {
-        const saved = localStorage.getItem('finance_data');
-        return saved ? JSON.parse(saved) : [];
-      });
-
-      const [goals, setGoals] = useState(() => {
-        const saved = localStorage.getItem('finance_goals');
-        return saved ? JSON.parse(saved) : [];
-      });
-
-      const [plans, setPlans] = useState(() => {
-        const saved = localStorage.getItem('finance_plans');
-        return saved ? JSON.parse(saved) : [];
-      });
-
-      const [wallets, setWallets] = useState(() => {
-        const saved = localStorage.getItem('finance_wallets');
-        return saved ? JSON.parse(saved) : [
-          { id: '1', name: 'Uang Tunai', balance: 0, color: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' },
-          { id: '2', name: 'Rekening BCA', balance: 0, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' },
-          { id: '3', name: 'GoPay', balance: 0, color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300' }
-        ];
-      });
+      const [transactions, setTransactions] = useState([]);
+      const [goals, setGoals] = useState([]);
+      const [plans, setPlans] = useState([]);
+      const [wallets, setWallets] = useState([]);
+      const [customCategories, setCustomCategories] = useState([]);
 
       const initialCategoryMap = {
         'Pemasukan': ['Gaji', 'Bonus', 'Hasil Bisnis', 'Investasi'],
@@ -73,35 +151,58 @@
         'Tabungan': ['Dana Darurat', 'Investasi', 'Tabungan Liburan']
       };
 
-      const [categoryMap, setCategoryMap] = useState(() => {
-        const saved = localStorage.getItem('finance_categories');
-        return saved ? JSON.parse(saved) : initialCategoryMap;
-      });
+      // FETCH DATA DARI SUPABASE
+      useEffect(() => {
+        const loadData = async () => {
+          setIsFetchingData(true);
+          try {
+            const [txRes, walletRes, goalsRes, plansRes, catRes] = await Promise.all([
+              supabase.from('transactions').select('*').order('date', { ascending: false }),
+              supabase.from('wallets').select('*'),
+              supabase.from('goals').select('*'),
+              supabase.from('plans').select('*').order('month', { ascending: false }),
+              supabase.from('categories').select('*')
+            ]);
 
-      // Global & Table Filters
+            if (txRes.data) setTransactions(txRes.data);
+            if (walletRes.data) setWallets(walletRes.data);
+            if (goalsRes.data) setGoals(goalsRes.data);
+            if (plansRes.data) setPlans(plansRes.data);
+            if (catRes.data) setCustomCategories(catRes.data);
+
+          } catch (error) {
+            console.error("Error fetching data:", error);
+          } finally {
+            setIsFetchingData(false);
+          }
+        };
+        loadData();
+      }, []);
+
+      // Gabungkan kategori default dengan kategori kustom dari database
+      const categoryMap = useMemo(() => {
+        const map = { ...initialCategoryMap };
+        customCategories.forEach(c => {
+          if (!map[c.type]) map[c.type] = [];
+          if (!map[c.type].includes(c.name)) map[c.type].push(c.name);
+        });
+        return map;
+      }, [customCategories]);
+
       const [globalFilterType, setGlobalFilterType] = useState('month'); 
       const [globalFilterValue, setGlobalFilterValue] = useState(new Date().toISOString().slice(0, 7));
       const [tableFilters, setTableFilters] = useState({ date: '', category: '', desc: '', type: '' });
 
-      // Specific History States
       const [historyType, setHistoryType] = useState('pemasukan');
       const [historyCatFilter, setHistoryCatFilter] = useState('');
       const [historyTimeFilterType, setHistoryTimeFilterType] = useState('all');
       const [historyTimeFilterValue, setHistoryTimeFilterValue] = useState(new Date().toISOString().slice(0, 7));
 
-      // Multi-Select States
       const [isSelectMode, setIsSelectMode] = useState(false);
       const [selectedIds, setSelectedIds] = useState(new Set());
 
-      // Form States (amount dipindah jadi text agar bisa ada titik format)
       const [formData, setFormData] = useState({
-        date: new Date().toISOString().split('T')[0],
-        type: 'Pemasukan',
-        customType: '',
-        category: 'Gaji',
-        customCategory: '',
-        amount: '',
-        description: ''
+        date: new Date().toISOString().split('T')[0], type: 'Pemasukan', customType: '', category: 'Gaji', customCategory: '', amount: '', description: ''
       });
 
       const [catDropdownOpen, setCatDropdownOpen] = useState(false);
@@ -111,52 +212,33 @@
       const [goalForm, setGoalForm] = useState({ name: '', target: '', date: '', urgency: 'sedang' });
       
       const [planForm, setPlanForm] = useState({
-        month: new Date().toISOString().slice(0, 7),
-        type: 'Pengeluaran Harian',
-        customType: '',
-        category: 'Makan & Minum',
-        customCategory: '',
-        amount: '',
-        description: ''
+        month: new Date().toISOString().slice(0, 7), type: 'Pengeluaran Harian', customType: '', category: 'Makan & Minum', customCategory: '', amount: '', description: ''
       });
 
       const [showWalletForm, setShowWalletForm] = useState(false);
       const [walletForm, setWalletForm] = useState({ name: '', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' });
 
-      // Modal Dialog Kustom
       const [modalState, setModalState] = useState({
         isOpen: false, type: 'confirm', title: '', message: '', inputValue: '', inputType: 'text', isCurrency: false, onConfirm: null,
       });
 
       const closeModal = () => setModalState(prev => ({ ...prev, isOpen: false, inputValue: '' }));
 
-      // --- EFFECTS ---
       useEffect(() => {
         localStorage.setItem('finance_theme', darkMode ? 'dark' : 'light');
         if (darkMode) document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
       }, [darkMode]);
 
-      useEffect(() => localStorage.setItem('finance_data', JSON.stringify(transactions)), [transactions]);
-      useEffect(() => localStorage.setItem('finance_goals', JSON.stringify(goals)), [goals]);
-      useEffect(() => localStorage.setItem('finance_plans', JSON.stringify(plans)), [plans]);
-      useEffect(() => localStorage.setItem('finance_wallets', JSON.stringify(wallets)), [wallets]);
-      useEffect(() => localStorage.setItem('finance_categories', JSON.stringify(categoryMap)), [categoryMap]);
-
-      // --- UTILS ---
       const formatRupiah = (number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number || 0);
 
-      // --- HANDLERS ---
       const handleInputChange = (e) => {
         const { name, value } = e.target;
         if (name === 'type') {
           const isCustom = value === 'Lainnya...';
           const firstCat = isCustom ? '' : (categoryMap[value] ? categoryMap[value][0] : '');
-          setFormData(prev => ({ 
-            ...prev, type: value, category: isCustom ? 'Lainnya...' : firstCat, customType: isCustom ? prev.customType : '', customCategory: isCustom ? prev.customCategory : ''
-          }));
+          setFormData(prev => ({ ...prev, type: value, category: isCustom ? 'Lainnya...' : firstCat, customType: isCustom ? prev.customType : '', customCategory: isCustom ? prev.customCategory : '' }));
         } else if (name === 'amount') {
-          // Format ribuan saat mengetik
           const num = value.replace(/[^0-9]/g, '');
           setFormData(prev => ({ ...prev, amount: num ? new Intl.NumberFormat('id-ID').format(num) : '' }));
         } else {
@@ -164,33 +246,24 @@
         }
       };
 
-      const handleCatSelect = (cat) => {
-        setFormData(prev => ({ ...prev, category: cat, customCategory: cat === 'Lainnya...' ? prev.customCategory : '' }));
-        setCatDropdownOpen(false);
-      };
+      const handleCatSelect = (cat) => { setFormData(prev => ({ ...prev, category: cat, customCategory: cat === 'Lainnya...' ? prev.customCategory : '' })); setCatDropdownOpen(false); };
+      const handlePlanCatSelect = (cat) => { setPlanForm(prev => ({ ...prev, category: cat, customCategory: cat === 'Lainnya...' ? prev.customCategory : '' })); setPlanCatDropdownOpen(false); };
 
-      const handlePlanCatSelect = (cat) => {
-        setPlanForm(prev => ({ ...prev, category: cat, customCategory: cat === 'Lainnya...' ? prev.customCategory : '' }));
-        setPlanCatDropdownOpen(false);
-      };
-
-      const deleteCategoryFromMap = (e, type, categoryToDelete) => {
+      const deleteCategoryFromMap = async (e, type, categoryToDelete) => {
         e.preventDefault(); e.stopPropagation(); setCatDropdownOpen(false); setPlanCatDropdownOpen(false);
         setModalState({
-          isOpen: true, type: 'confirm', title: 'Hapus Kategori', message: `Hapus kategori "${categoryToDelete}" secara permanen?`,
-          onConfirm: () => {
-            setCategoryMap(prev => {
-              const newMap = { ...prev };
-              newMap[type] = newMap[type].filter(c => c !== categoryToDelete);
-              return newMap;
-            });
+          isOpen: true, type: 'confirm', title: 'Hapus Kategori', message: `Hapus kategori kustom "${categoryToDelete}"? (Kategori default tidak bisa dihapus)`,
+          onConfirm: async () => {
+            const targetCat = customCategories.find(c => c.type === type && c.name === categoryToDelete);
+            if (targetCat) {
+              await supabase.from('categories').delete().eq('id', targetCat.id);
+              setCustomCategories(prev => prev.filter(c => c.id !== targetCat.id));
+            }
             if(formData.category === categoryToDelete) setFormData(prev => ({ ...prev, category: 'Lainnya...' }));
-            if(planForm.category === categoryToDelete) setPlanForm(prev => ({ ...prev, category: 'Lainnya...' }));
           }
         });
       };
 
-      // --- FILTERING & STATS ---
       const filteredByGlobal = useMemo(() => {
         return transactions.filter(t => {
           if (globalFilterType === 'all') return true;
@@ -227,49 +300,111 @@
         });
 
         return {
-          saldoSaatIni: totalAllPemasukan - totalAllPengeluaran - totalAllTabungan,
-          totalTabungan: totalAllTabungan,
-          pemasukanFilter: filteredPemasukan,
-          pengeluaranFilter: filteredPengeluaran
+          saldoSaatIni: totalAllPemasukan - totalAllPengeluaran - totalAllTabungan, totalTabungan: totalAllTabungan,
+          pemasukanFilter: filteredPemasukan, pengeluaranFilter: filteredPengeluaran
         };
       }, [transactions, filteredByGlobal]);
 
       const sumOfWallets = wallets.reduce((acc, w) => acc + w.balance, 0);
 
-      // --- VIEWS COMPONENTS ---
-      
+      // --- SUPABASE CRUD TRANSACTIONS ---
+      const handleSubmitTransaction = async (e) => {
+        e.preventDefault();
+        const parsedAmount = parseInt(formData.amount.replace(/[^0-9]/g, ''), 10);
+        if (isNaN(parsedAmount) || parsedAmount <= 0) return;
+
+        let finalType = formData.type; let finalCategory = formData.category;
+
+        if (formData.type === 'Lainnya...' && formData.customType.trim() !== '') {
+          finalType = formData.customType.trim();
+        }
+        if (formData.category === 'Lainnya...' && formData.customCategory.trim() !== '') {
+          finalCategory = formData.customCategory.trim();
+          // Simpan ke DB Categories jika baru
+          if (!categoryMap[finalType]?.includes(finalCategory)) {
+            const { data } = await supabase.from('categories').insert([{ user_id: user.id, type: finalType, name: finalCategory }]).select();
+            if (data) setCustomCategories([...customCategories, ...data]);
+          }
+        }
+
+        const newTx = {
+          user_id: user.id, date: formData.date, type: finalType, category: finalCategory,
+          amount: parsedAmount, description: formData.description || '-'
+        };
+
+        const { data, error } = await supabase.from('transactions').insert([newTx]).select();
+        if (data) setTransactions([data[0], ...transactions]);
+        setFormData(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
+      };
+
+      const deleteTransactionItem = (id) => {
+        setModalState({
+          isOpen: true, type: 'confirm', title: 'Hapus Transaksi', message: 'Hapus transaksi ini permanen?',
+          onConfirm: async () => {
+            await supabase.from('transactions').delete().eq('id', id);
+            setTransactions(prev => prev.filter(t => t.id !== id));
+          }
+        });
+      };
+
+      const deleteSelectedTransactions = () => {
+        setModalState({
+          isOpen: true, type: 'confirm', title: 'Hapus Multi Transaksi', message: `Hapus ${selectedIds.size} transaksi terpilih secara permanen?`,
+          onConfirm: async () => {
+            const idsArray = Array.from(selectedIds);
+            await supabase.from('transactions').delete().in('id', idsArray);
+            setTransactions(prev => prev.filter(t => !selectedIds.has(t.id)));
+            setSelectedIds(new Set()); setIsSelectMode(false);
+          }
+        });
+      };
+
+      // --- SUPABASE CRUD SAVINGS ---
       const renderSavingsView = () => {
-        const handleGoalSubmit = (e) => {
+        const handleGoalSubmit = async (e) => {
           e.preventDefault();
           const target = parseInt(goalForm.target.replace(/[^0-9]/g, ''), 10);
           if (!goalForm.name || isNaN(target) || target <= 0) return;
-          setGoals([...goals, { id: Date.now().toString(), name: goalForm.name, target: target, saved: 0, date: goalForm.date, urgency: goalForm.urgency }]);
+          
+          const newGoal = { user_id: user.id, name: goalForm.name, target, saved: 0, date: goalForm.date || null, urgency: goalForm.urgency };
+          const { data } = await supabase.from('goals').insert([newGoal]).select();
+          if (data) setGoals([...goals, data[0]]);
           setShowGoalForm(false); setGoalForm({ name: '', target: '', date: '', urgency: 'sedang' });
         };
 
-        const updateGoalSaved = (id) => {
+        const updateGoalSaved = (id, currentSaved) => {
           setModalState({
             isOpen: true, type: 'prompt', inputType: 'text', isCurrency: true, title: 'Update Saldo Target',
             message: "Masukkan nominal yang ditambahkan (ketik '-' di awal untuk mengurangi):", inputValue: '',
-            onConfirm: (val) => {
+            onConfirm: async (val) => {
               const isNegative = val.startsWith('-');
               let amount = parseInt(val.replace(/[^0-9]/g, ''), 10);
               if (isNaN(amount)) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Error', message: 'Nominal tidak valid!' }), 300);
               if (isNegative) amount = -amount;
-              setGoals(goals.map(g => g.id === id ? { ...g, saved: Math.max(0, g.saved + amount) } : g));
+              
+              const newSaved = Math.max(0, currentSaved + amount);
+              await supabase.from('goals').update({ saved: newSaved }).eq('id', id);
+              setGoals(goals.map(g => g.id === id ? { ...g, saved: newSaved } : g));
             }
           });
         };
 
+        const deleteGoal = (id) => {
+          setModalState({
+            isOpen: true, type: 'confirm', title: 'Hapus Target', message: 'Hapus target tabungan ini?', 
+            onConfirm: async () => {
+              await supabase.from('goals').delete().eq('id', id);
+              setGoals(goals.filter(g => g.id !== id));
+            }
+          });
+        }
+
         return (
           <div className="space-y-4 sm:space-y-6 animate-fadeIn">
             <div className="flex items-center gap-3 sm:gap-4">
-              <button onClick={() => setCurrentView('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}>
-                <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
-              </button>
+              <button onClick={() => setCurrentView('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}><ArrowLeft size={18} className="sm:w-5 sm:h-5" /></button>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><Target className="text-purple-500 w-5 h-5 sm:w-6 sm:h-6" /> Target Tabungan</h2>
             </div>
-
             <div className={`bg-purple-100 dark:bg-purple-900/30 p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${box3D}`}>
               <div className="w-full md:w-auto">
                 <p className="text-purple-800 dark:text-purple-300 font-bold text-sm sm:text-base">Total Seluruh Tabungan</p>
@@ -281,13 +416,7 @@
             {showGoalForm && (
               <form onSubmit={handleGoalSubmit} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 ${box3D}`}>
                 <div><label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Nama Target</label><input type="text" required value={goalForm.name} onChange={e => setGoalForm({...goalForm, name: e.target.value})} placeholder="Misal: Beli Laptop" className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white outline-none focus:border-gray-900 dark:focus:border-white transition-colors" /></div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Target Nominal (Rp)</label>
-                  <input type="text" inputMode="numeric" required value={goalForm.target} onChange={e => {
-                    const num = e.target.value.replace(/[^0-9]/g, '');
-                    setGoalForm({...goalForm, target: num ? new Intl.NumberFormat('id-ID').format(num) : ''});
-                  }} placeholder="0" className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white outline-none focus:border-gray-900 dark:focus:border-white transition-colors" />
-                </div>
+                <div><label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Target Nominal (Rp)</label><input type="text" inputMode="numeric" required value={goalForm.target} onChange={e => { const num = e.target.value.replace(/[^0-9]/g, ''); setGoalForm({...goalForm, target: num ? new Intl.NumberFormat('id-ID').format(num) : ''}); }} placeholder="0" className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white outline-none focus:border-gray-900 dark:focus:border-white transition-colors" /></div>
                 <div><label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Tercapai Pada</label><input type="date" value={goalForm.date} onChange={e => setGoalForm({...goalForm, date: e.target.value})} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white outline-none focus:border-gray-900 dark:focus:border-white transition-colors" /></div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Urgensi</label>
@@ -308,7 +437,7 @@
 
                 return (
                   <div key={goal.id} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl relative flex flex-col ${box3D}`}>
-                    <button onClick={() => setModalState({ isOpen: true, type: 'confirm', title: 'Hapus Target', message: 'Hapus target tabungan ini?', onConfirm: () => setGoals(goals.filter(g => g.id !== goal.id)) })} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                    <button onClick={() => deleteGoal(goal.id)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
                     <div className="flex items-center gap-2 mb-4"><UrgencyIcon size={20} className={iconColor} /><h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 pr-6 truncate">{goal.name}</h3></div>
                     {goal.date && <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-1.5"><Calendar size={14}/> Target: {goal.date}</p>}
                     <div className="mt-auto">
@@ -316,7 +445,7 @@
                       <div className="flex justify-between text-xs sm:text-sm mb-4 font-bold"><span className="text-gray-500 dark:text-gray-400">Target</span><span className="text-gray-800 dark:text-gray-200">{formatRupiah(goal.target)}</span></div>
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 sm:h-4 mb-2 overflow-hidden border border-gray-300 dark:border-gray-600"><div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
                       <p className="text-xs sm:text-sm text-right text-purple-600 dark:text-purple-400 font-black mb-4 sm:mb-5">{progress.toFixed(1)}%</p>
-                      <button onClick={() => updateGoalSaved(goal.id)} className="w-full flex items-center justify-center gap-2 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 py-2.5 rounded-lg font-bold transition-colors text-sm"><Edit2 size={16} /> Update Saldo</button>
+                      <button onClick={() => updateGoalSaved(goal.id, goal.saved)} className="w-full flex items-center justify-center gap-2 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 py-2.5 rounded-lg font-bold transition-colors text-sm"><Edit2 size={16} /> Update Saldo</button>
                     </div>
                   </div>
                 );
@@ -344,9 +473,11 @@
           { id: 'rose', class: 'bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-900/50 dark:text-rose-300 dark:border-rose-700' }
         ];
 
-        const submitWallet = (e) => {
+        const submitWallet = async (e) => {
           e.preventDefault(); if (!walletForm.name) return;
-          setWallets([...wallets, { id: Date.now().toString(), name: walletForm.name, balance: 0, color: walletForm.color }]);
+          const newWallet = { user_id: user.id, name: walletForm.name, balance: 0, color: walletForm.color };
+          const { data } = await supabase.from('wallets').insert([newWallet]).select();
+          if(data) setWallets([...wallets, data[0]]);
           setShowWalletForm(false); setWalletForm({ name: '', color: WalletColors[0].class });
         };
 
@@ -354,10 +485,12 @@
           setModalState({
             isOpen: true, type: 'prompt', inputType: 'text', isCurrency: true, title: 'Sesuaikan Saldo',
             message: "Masukkan nominal saldo terbaru:", inputValue: '',
-            onConfirm: (val) => {
+            onConfirm: async (val) => {
               const balance = parseInt(val.replace(/[^0-9]/g, ''), 10);
-              if (!isNaN(balance)) setWallets(wallets.map(w => w.id === id ? { ...w, balance } : w));
-              else setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Error', message: 'Nominal tidak valid!' }), 300);
+              if (!isNaN(balance)) {
+                await supabase.from('wallets').update({ balance }).eq('id', id);
+                setWallets(wallets.map(w => w.id === id ? { ...w, balance } : w));
+              } else setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Error', message: 'Nominal tidak valid!' }), 300);
             }
           });
         };
@@ -410,7 +543,7 @@
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               {wallets.map(wallet => (
                 <div key={wallet.id} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl relative ${box3D}`}>
-                  <button onClick={() => setModalState({ isOpen: true, type: 'confirm', title: 'Hapus Dompet', message: 'Hapus dompet ini?', onConfirm: () => setWallets(wallets.filter(w => w.id !== wallet.id)) })} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                  <button onClick={() => setModalState({ isOpen: true, type: 'confirm', title: 'Hapus Dompet', message: 'Hapus dompet ini?', onConfirm: async () => { await supabase.from('wallets').delete().eq('id', wallet.id); setWallets(wallets.filter(w => w.id !== wallet.id)); } })} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
                   <div className={`p-2.5 sm:p-3 rounded-xl inline-block mb-3 sm:mb-4 shadow-sm ${wallet.color}`}><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
                   <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 pr-6 truncate">{wallet.name}</h3>
                   <p className="text-xl sm:text-2xl font-black text-gray-800 dark:text-gray-200 my-1.5 sm:my-2 tracking-tight truncate">{formatRupiah(wallet.balance)}</p>
@@ -435,17 +568,11 @@
           const isIncome = t.type.toLowerCase().includes('pemasukan');
           const isSaving = t.type.toLowerCase().includes('tabungan');
           const isExpense = !isIncome && !isSaving;
-          
           const typeMatch = isIncomeView ? isIncome : isExpense;
           const catMatch = historyCatFilter === '' || t.category === historyCatFilter;
-          
           let timeMatch = true;
-          if (historyTimeFilterType === 'month') {
-            timeMatch = t.date.startsWith(historyTimeFilterValue);
-          } else if (historyTimeFilterType === 'date') {
-            timeMatch = t.date === historyTimeFilterValue;
-          }
-
+          if (historyTimeFilterType === 'month') timeMatch = t.date.startsWith(historyTimeFilterValue);
+          else if (historyTimeFilterType === 'date') timeMatch = t.date === historyTimeFilterValue;
           return typeMatch && catMatch && timeMatch;
         });
 
@@ -460,49 +587,28 @@
         return (
           <div className="space-y-4 sm:space-y-6 animate-fadeIn">
             <div className="flex items-center gap-3 sm:gap-4">
-              <button onClick={() => { setCurrentView('dashboard'); setHistoryCatFilter(''); setHistoryTimeFilterType('all'); }} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}>
-                <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
-              </button>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                <IconComponent className={`${iconColorClass} w-5 h-5 sm:w-6 sm:h-6`} /> {title}
-              </h2>
+              <button onClick={() => { setCurrentView('dashboard'); setHistoryCatFilter(''); setHistoryTimeFilterType('all'); }} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}><ArrowLeft size={18} className="sm:w-5 sm:h-5" /></button>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><IconComponent className={`${iconColorClass} w-5 h-5 sm:w-6 sm:h-6`} /> {title}</h2>
             </div>
 
             <div className={`${headerBgClass} p-4 sm:p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 ${box3D}`}>
               <div className="w-full lg:w-auto">
-                <p className={`${textColorClass} font-bold text-sm sm:text-base`}>
-                  Total {historyTimeFilterType === 'all' ? '(Semua Waktu)' : historyTimeFilterType === 'month' ? '(Bulan Ini)' : '(Harian)'}
-                </p>
+                <p className={`${textColorClass} font-bold text-sm sm:text-base`}>Total {historyTimeFilterType === 'all' ? '(Semua Waktu)' : historyTimeFilterType === 'month' ? '(Bulan Ini)' : '(Harian)'}</p>
                 <h3 className={`text-2xl sm:text-3xl font-black ${amountColorClass} mt-1 tracking-tight truncate`}>{formatRupiah(totalNominal)}</h3>
               </div>
-              
               <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-3">
                  <div className="flex flex-1 sm:flex-none items-center gap-2 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-500 rounded-lg p-2.5 sm:p-2 shadow-sm">
                    <Calendar size={18} className="text-gray-500 ml-1 shrink-0" />
-                   <select 
-                     value={historyTimeFilterType} onChange={(e) => setHistoryTimeFilterType(e.target.value)}
-                     className="bg-transparent font-bold text-gray-800 dark:text-gray-200 text-sm outline-none cursor-pointer pr-1"
-                   >
-                     <option value="all">Semua Waktu</option>
-                     <option value="month">Bulanan</option>
-                     <option value="date">Harian</option>
+                   <select value={historyTimeFilterType} onChange={(e) => setHistoryTimeFilterType(e.target.value)} className="bg-transparent font-bold text-gray-800 dark:text-gray-200 text-sm outline-none cursor-pointer pr-1">
+                     <option value="all">Semua Waktu</option><option value="month">Bulanan</option><option value="date">Harian</option>
                    </select>
-                   {historyTimeFilterType === 'month' && (
-                     <input type="month" value={historyTimeFilterValue} onChange={(e) => setHistoryTimeFilterValue(e.target.value)} className="bg-transparent font-bold text-gray-800 dark:text-gray-200 text-sm outline-none w-full sm:w-auto border-l-2 border-gray-200 dark:border-gray-600 pl-2 ml-1" />
-                   )}
-                   {historyTimeFilterType === 'date' && (
-                     <input type="date" value={historyTimeFilterValue} onChange={(e) => setHistoryTimeFilterValue(e.target.value)} className="bg-transparent font-bold text-gray-800 dark:text-gray-200 text-sm outline-none w-full sm:w-auto border-l-2 border-gray-200 dark:border-gray-600 pl-2 ml-1" />
-                   )}
+                   {historyTimeFilterType === 'month' && <input type="month" value={historyTimeFilterValue} onChange={(e) => setHistoryTimeFilterValue(e.target.value)} className="bg-transparent font-bold text-gray-800 dark:text-gray-200 text-sm outline-none w-full sm:w-auto border-l-2 border-gray-200 dark:border-gray-600 pl-2 ml-1" />}
+                   {historyTimeFilterType === 'date' && <input type="date" value={historyTimeFilterValue} onChange={(e) => setHistoryTimeFilterValue(e.target.value)} className="bg-transparent font-bold text-gray-800 dark:text-gray-200 text-sm outline-none w-full sm:w-auto border-l-2 border-gray-200 dark:border-gray-600 pl-2 ml-1" />}
                  </div>
-
                  <div className="flex flex-1 sm:flex-none items-center gap-2 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-500 rounded-lg p-2.5 sm:p-2 shadow-sm">
                    <Filter size={18} className="text-gray-500 ml-1 shrink-0" />
-                   <select 
-                     value={historyCatFilter} onChange={(e) => setHistoryCatFilter(e.target.value)}
-                     className="bg-transparent font-bold text-gray-800 dark:text-gray-200 text-sm outline-none w-full cursor-pointer pr-2"
-                   >
-                     <option value="">Semua Kategori</option>
-                     {uniqueHistoryCats.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                   <select value={historyCatFilter} onChange={(e) => setHistoryCatFilter(e.target.value)} className="bg-transparent font-bold text-gray-800 dark:text-gray-200 text-sm outline-none w-full cursor-pointer pr-2">
+                     <option value="">Semua Kategori</option>{uniqueHistoryCats.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                    </select>
                  </div>
               </div>
@@ -534,9 +640,7 @@
                           <td className="p-3 sm:p-4 text-gray-700 dark:text-gray-300 font-medium whitespace-nowrap">{t.date}</td>
                           <td className="p-3 sm:p-4 text-gray-900 dark:text-gray-100 font-bold">{t.category}</td>
                           <td className="p-3 sm:p-4 text-gray-600 dark:text-gray-400 font-medium max-w-[150px] sm:max-w-none truncate sm:whitespace-normal">{t.description}</td>
-                          <td className={`p-3 sm:p-4 text-right font-black tracking-tight text-sm sm:text-base whitespace-nowrap ${isIncomeView ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {isIncomeView ? '+' : '-'}{formatRupiah(t.amount)}
-                          </td>
+                          <td className={`p-3 sm:p-4 text-right font-black tracking-tight text-sm sm:text-base whitespace-nowrap ${isIncomeView ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{isIncomeView ? '+' : '-'}{formatRupiah(t.amount)}</td>
                           <td className="p-3 sm:p-4 text-center">
                             <button onClick={() => deleteTransactionItem(t.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-1.5 sm:p-2 rounded-lg transition-all" title="Hapus"><Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                           </td>
@@ -552,51 +656,37 @@
       };
 
       const renderPlannerView = () => {
-        const handlePlanSubmit = (e) => {
+        const handlePlanSubmit = async (e) => {
           e.preventDefault();
           const parsedAmount = parseInt(planForm.amount.replace(/[^0-9]/g, ''), 10);
           if (isNaN(parsedAmount) || parsedAmount <= 0) return;
 
           let finalType = planForm.type; let finalCategory = planForm.category;
-          let mapUpdated = false; let newCategoryMap = { ...categoryMap };
+          if (planForm.type === 'Lainnya...' && planForm.customType.trim() !== '') finalType = planForm.customType.trim();
+          if (planForm.category === 'Lainnya...' && planForm.customCategory.trim() !== '') finalCategory = planForm.customCategory.trim();
 
-          if (planForm.type === 'Lainnya...' && planForm.customType.trim() !== '') {
-            finalType = planForm.customType.trim();
-            if (!newCategoryMap[finalType]) { newCategoryMap[finalType] = []; mapUpdated = true; }
-          }
-          if (planForm.category === 'Lainnya...' && planForm.customCategory.trim() !== '') {
-            finalCategory = planForm.customCategory.trim();
-            if (!newCategoryMap[finalType].includes(finalCategory)) {
-              newCategoryMap[finalType] = [...(newCategoryMap[finalType] || []), finalCategory];
-              mapUpdated = true;
-            }
-          }
-          if (mapUpdated) setCategoryMap(newCategoryMap);
-
-          const newPlan = {
-            id: Date.now().toString(), month: planForm.month, type: finalType, category: finalCategory,
-            amount: parsedAmount, description: planForm.description || '-', isCompleted: false
-          };
-
-          setPlans([newPlan, ...plans]);
+          const newPlan = { user_id: user.id, month: planForm.month, type: finalType, category: finalCategory, amount: parsedAmount, description: planForm.description || '-', is_completed: false };
+          const { data } = await supabase.from('plans').insert([newPlan]).select();
+          
+          if(data) setPlans([data[0], ...plans]);
           setPlanForm(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
         };
 
         const executePlan = (plan) => {
           setModalState({
             isOpen: true, type: 'prompt', inputType: 'text', isCurrency: true, title: 'Eksekusi Rencana', 
-            message: `Catat "${plan.category}" ke riwayat transaksi hari ini. Anda dapat mengubah nominal jika berbeda dari rencana awal:`,
+            message: `Catat "${plan.category}" ke riwayat hari ini. Edit nominal jika aktualnya berbeda:`,
             inputValue: new Intl.NumberFormat('id-ID').format(plan.amount),
-            onConfirm: (val) => {
+            onConfirm: async (val) => {
               const actualAmount = parseInt(val.replace(/[^0-9]/g, ''), 10);
               if (isNaN(actualAmount) || actualAmount <= 0) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Error', message: 'Nominal tidak valid!' }), 300);
               
-              setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, isCompleted: true } : p));
-              const newTx = {
-                id: Date.now().toString(), date: new Date().toISOString().split('T')[0],
-                type: plan.type, category: plan.category, amount: actualAmount, description: `[Rencana] ${plan.description}`
-              };
-              setTransactions(prev => [newTx, ...prev]);
+              await supabase.from('plans').update({ is_completed: true }).eq('id', plan.id);
+              setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, is_completed: true } : p));
+              
+              const newTx = { user_id: user.id, date: new Date().toISOString().split('T')[0], type: plan.type, category: plan.category, amount: actualAmount, description: `[Rencana] ${plan.description}` };
+              const { data } = await supabase.from('transactions').insert([newTx]).select();
+              if(data) setTransactions(prev => [data[0], ...prev]);
             }
           });
         };
@@ -604,7 +694,10 @@
         const deletePlan = (id) => {
           setModalState({
             isOpen: true, type: 'confirm', title: 'Hapus Rencana', message: 'Hapus rencana ini dari daftar?',
-            onConfirm: () => setPlans(prev => prev.filter(p => p.id !== id))
+            onConfirm: async () => {
+              await supabase.from('plans').delete().eq('id', id);
+              setPlans(prev => prev.filter(p => p.id !== id));
+            }
           });
         };
 
@@ -614,75 +707,45 @@
         return (
           <div className="space-y-4 sm:space-y-6 animate-fadeIn">
             <div className="flex items-center gap-3 sm:gap-4">
-              <button onClick={() => setCurrentView('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}>
-                <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
-              </button>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                <ClipboardList className="text-amber-500 w-5 h-5 sm:w-6 sm:h-6" /> Rencana Bulanan
-              </h2>
+              <button onClick={() => setCurrentView('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}><ArrowLeft size={18} className="sm:w-5 sm:h-5" /></button>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><ClipboardList className="text-amber-500 w-5 h-5 sm:w-6 sm:h-6" /> Rencana Bulanan</h2>
             </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
               <div className={`lg:col-span-4 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col ${box3D}`}>
                 <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-4 sm:mb-5">Buat Rencana</h2>
                 <form onSubmit={handlePlanSubmit} className="space-y-3 sm:space-y-4">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Bulan Rencana</label>
-                    <input type="month" required value={planForm.month} onChange={e => setPlanForm({...planForm, month: e.target.value})} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors" />
-                  </div>
+                  <div><label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Bulan Rencana</label><input type="month" required value={planForm.month} onChange={e => setPlanForm({...planForm, month: e.target.value})} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors" /></div>
                   <div>
                     <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Jenis Transaksi</label>
-                    <select value={planForm.type} onChange={e => {
-                      const val = e.target.value;
-                      const isCustom = val === 'Lainnya...';
-                      setPlanForm({...planForm, type: val, category: isCustom ? 'Lainnya...' : (categoryMap[val] ? categoryMap[val][0] : ''), customType: isCustom ? planForm.customType : '', customCategory: isCustom ? planForm.customCategory : ''});
-                    }} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 transition-colors cursor-pointer">
-                      {Object.keys(categoryMap).map(type => <option key={type} value={type}>{type}</option>)}
-                      <option value="Lainnya...">Lainnya...</option>
-                    </select>
-                    {planForm.type === 'Lainnya...' && (
-                      <input type="text" placeholder="Ketik jenis baru..." required value={planForm.customType} onChange={e => setPlanForm({...planForm, customType: e.target.value})} className="mt-2 w-full border-2 border-amber-300 dark:border-amber-600 rounded-lg p-2 sm:p-2.5 bg-amber-50 dark:bg-amber-900/20 text-gray-900 dark:text-white outline-none" />
-                    )}
+                    <select value={planForm.type} onChange={e => { const val = e.target.value; const isCustom = val === 'Lainnya...'; setPlanForm({...planForm, type: val, category: isCustom ? 'Lainnya...' : (categoryMap[val] ? categoryMap[val][0] : ''), customType: isCustom ? planForm.customType : '', customCategory: isCustom ? planForm.customCategory : ''}); }} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 transition-colors cursor-pointer">{Object.keys(categoryMap).map(type => <option key={type} value={type}>{type}</option>)}<option value="Lainnya...">Lainnya...</option></select>
+                    {planForm.type === 'Lainnya...' && <input type="text" placeholder="Ketik jenis baru..." required value={planForm.customType} onChange={e => setPlanForm({...planForm, customType: e.target.value})} className="mt-2 w-full border-2 border-amber-300 dark:border-amber-600 rounded-lg p-2.5 bg-amber-50 dark:bg-amber-900/20 text-gray-900 dark:text-white outline-none" />}
                   </div>
                   <div className="relative">
                     <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Kategori</label>
-                    <div onClick={() => setPlanCatDropdownOpen(!planCatDropdownOpen)} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium flex justify-between items-center cursor-pointer select-none">
-                      <span className="truncate pr-2">{planForm.category}</span>
-                      <ChevronDown size={16} className="text-gray-500" />
-                    </div>
+                    <div onClick={() => setPlanCatDropdownOpen(!planCatDropdownOpen)} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium flex justify-between items-center cursor-pointer select-none"><span className="truncate pr-2">{planForm.category}</span><ChevronDown size={16} className="text-gray-500" /></div>
                     {planCatDropdownOpen && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setPlanCatDropdownOpen(false)}></div>
+                      <><div className="fixed inset-0 z-40" onClick={() => setPlanCatDropdownOpen(false)}></div>
                         <div className="absolute z-50 w-full mt-1 sm:mt-2 bg-white dark:bg-gray-800 border-2 border-gray-800 dark:border-gray-600 rounded-lg shadow-[4px_4px_0_0_#000000] max-h-48 overflow-y-auto">
                           {(categoryMap[planForm.type] || []).map(cat => (
-                            <div key={cat} className="flex justify-between items-center p-2.5 sm:p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer font-medium border-b border-gray-100 dark:border-gray-700">
-                              <span onClick={() => handlePlanCatSelect(cat)} className="flex-1 text-gray-900 dark:text-white truncate">{cat}</span>
-                              <div className="p-1 sm:p-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg ml-2 group" onMouseDown={(e) => deleteCategoryFromMap(e, planForm.type, cat)}><Trash2 size={14} className="text-gray-400 group-hover:text-red-500" /></div>
-                            </div>
+                            <div key={cat} className="flex justify-between items-center p-2.5 sm:p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer font-medium border-b border-gray-100 dark:border-gray-700"><span onClick={() => handlePlanCatSelect(cat)} className="flex-1 text-gray-900 dark:text-white truncate">{cat}</span><div className="p-1 sm:p-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg ml-2 group" onMouseDown={(e) => deleteCategoryFromMap(e, planForm.type, cat)}><Trash2 size={14} className="text-gray-400 group-hover:text-red-500" /></div></div>
                           ))}
                           <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-200 cursor-pointer text-gray-900 dark:text-white font-bold" onClick={() => handlePlanCatSelect('Lainnya...')}>+ Tambah Lainnya...</div>
-                        </div>
-                      </>
+                        </div></>
                     )}
-                    {planForm.category === 'Lainnya...' && <input type="text" placeholder="Ketik kategori baru..." required value={planForm.customCategory} onChange={e => setPlanForm({...planForm, customCategory: e.target.value})} className="mt-2 w-full border-2 border-amber-300 rounded-lg p-2 sm:p-2.5 bg-amber-50 outline-none" />}
+                    {planForm.category === 'Lainnya...' && <input type="text" placeholder="Ketik kategori baru..." required value={planForm.customCategory} onChange={e => setPlanForm({...planForm, customCategory: e.target.value})} className="mt-2 w-full border-2 border-amber-300 rounded-lg p-2.5 bg-amber-50 outline-none" />}
                   </div>
                   <div>
                     <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Nominal (Rp)</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign size={16} className="text-gray-500" /></div>
-                      <input type="text" inputMode="numeric" required value={planForm.amount} onChange={e => {
-                        const num = e.target.value.replace(/[^0-9]/g, '');
-                        setPlanForm({...planForm, amount: num ? new Intl.NumberFormat('id-ID').format(num) : ''});
-                      }} placeholder="0" className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-black outline-none focus:border-gray-900 dark:focus:border-white transition-colors" />
+                      <input type="text" inputMode="numeric" required value={planForm.amount} onChange={e => { const num = e.target.value.replace(/[^0-9]/g, ''); setPlanForm({...planForm, amount: num ? new Intl.NumberFormat('id-ID').format(num) : ''}); }} placeholder="0" className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-black outline-none focus:border-gray-900 dark:focus:border-white transition-colors" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Keterangan Tambahan</label>
-                    <input type="text" value={planForm.description} onChange={e => setPlanForm({...planForm, description: e.target.value})} placeholder="Cth: Anggaran Belanja..." className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none" />
+                    <input type="text" value={planForm.description} onChange={e => setPlanForm({...planForm, description: e.target.value})} placeholder="Cth: Anggaran Belanja..." className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none" />
                   </div>
-                  <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 sm:py-3.5 px-4 rounded-xl transition-all mt-4 border-2 border-amber-900 shadow-[2px_2px_0_0_#78350f] active:shadow-none active:translate-y-[2px]">
-                    Simpan ke Rencana
-                  </button>
+                  <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 sm:py-3.5 px-4 rounded-xl transition-all mt-4 border-2 border-amber-900 shadow-[2px_2px_0_0_#78350f] active:shadow-none active:translate-y-[2px]">Simpan ke Rencana</button>
                 </form>
               </div>
 
@@ -693,44 +756,23 @@
                     <p className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">Total Dianggarkan: {formatRupiah(totalPlannedAmount)}</p>
                   </div>
                 </div>
-                
                 <div className="flex-1 overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
                   <table className="w-full text-left border-collapse min-w-[700px]">
                     <thead className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs sm:text-sm sticky top-0 z-10 shadow-sm border-b-2 border-gray-200 dark:border-gray-700">
-                      <tr>
-                        <th className="p-3 font-bold w-12 text-center">Status</th>
-                        <th className="p-3 font-bold">Tipe & Kategori</th>
-                        <th className="p-3 font-bold">Keterangan</th>
-                        <th className="p-3 font-bold text-right">Nominal</th>
-                        <th className="p-3 font-bold text-center">Aksi</th>
-                      </tr>
+                      <tr><th className="p-3 font-bold w-12 text-center">Status</th><th className="p-3 font-bold">Tipe & Kategori</th><th className="p-3 font-bold">Keterangan</th><th className="p-3 font-bold text-right">Nominal</th><th className="p-3 font-bold text-center">Aksi</th></tr>
                     </thead>
                     <tbody className="text-xs sm:text-sm">
                       {currentMonthPlans.length === 0 ? (
-                        <tr>
-                          <td colSpan="5" className="text-center text-gray-500 py-12 bg-white dark:bg-gray-800 h-full">
-                            <ClipboardList size={40} className="mx-auto mb-3 opacity-20" />
-                            <p className="font-bold">Tidak ada rencana tercatat untuk bulan ini.</p>
-                          </td>
-                        </tr>
+                        <tr><td colSpan="5" className="text-center text-gray-500 py-12 bg-white dark:bg-gray-800 h-full"><ClipboardList size={40} className="mx-auto mb-3 opacity-20" /><p className="font-bold">Tidak ada rencana tercatat.</p></td></tr>
                       ) : (
                         currentMonthPlans.map((p) => (
-                          <tr key={p.id} className={`border-b border-gray-200 dark:border-gray-700 transition-colors ${p.isCompleted ? 'bg-gray-100 dark:bg-gray-800/50 opacity-60' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
-                            <td className="p-3 text-center">
-                              {p.isCompleted ? <CheckCircle2 size={20} className="text-green-500 mx-auto" /> : <Clock size={20} className="text-amber-500 mx-auto" />}
-                            </td>
-                            <td className="p-3">
-                              <p className="font-bold text-gray-900 dark:text-gray-100 truncate">{p.category}</p>
-                              <p className="text-[10px] sm:text-xs font-bold text-gray-500 mt-0.5">{p.type.toUpperCase()}</p>
-                            </td>
+                          <tr key={p.id} className={`border-b border-gray-200 dark:border-gray-700 transition-colors ${p.is_completed ? 'bg-gray-100 dark:bg-gray-800/50 opacity-60' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
+                            <td className="p-3 text-center">{p.is_completed ? <CheckCircle2 size={20} className="text-green-500 mx-auto" /> : <Clock size={20} className="text-amber-500 mx-auto" />}</td>
+                            <td className="p-3"><p className="font-bold text-gray-900 dark:text-gray-100 truncate">{p.category}</p><p className="text-[10px] sm:text-xs font-bold text-gray-500 mt-0.5">{p.type.toUpperCase()}</p></td>
                             <td className="p-3 text-gray-600 dark:text-gray-400 font-medium truncate">{p.description}</td>
                             <td className="p-3 text-right font-black tracking-tight text-sm sm:text-base text-gray-800 dark:text-gray-200">{formatRupiah(p.amount)}</td>
                             <td className="p-3 text-center flex justify-center gap-2">
-                              {!p.isCompleted && (
-                                <button onClick={() => executePlan(p)} className="flex items-center gap-1 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-800 px-2.5 py-1.5 rounded-lg font-bold transition-colors">
-                                  <CheckCircle2 size={14} /> Eksekusi
-                                </button>
-                              )}
+                              {!p.is_completed && <button onClick={() => executePlan(p)} className="flex items-center gap-1 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/50 dark:text-green-300 px-2.5 py-1.5 rounded-lg font-bold transition-colors"><CheckCircle2 size={14} /> Eksekusi</button>}
                               <button onClick={() => deletePlan(p.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-1.5 rounded-lg transition-all" title="Hapus"><Trash2 size={16} /></button>
                             </td>
                           </tr>
@@ -743,53 +785,6 @@
             </div>
           </div>
         );
-      };
-
-      const handleSubmitTransaction = (e) => {
-        e.preventDefault();
-        const parsedAmount = parseInt(formData.amount.replace(/[^0-9]/g, ''), 10);
-        if (isNaN(parsedAmount) || parsedAmount <= 0) return;
-
-        let finalType = formData.type; let finalCategory = formData.category;
-        let mapUpdated = false; let newCategoryMap = { ...categoryMap };
-
-        if (formData.type === 'Lainnya...' && formData.customType.trim() !== '') {
-          finalType = formData.customType.trim();
-          if (!newCategoryMap[finalType]) { newCategoryMap[finalType] = []; mapUpdated = true; }
-        }
-        if (formData.category === 'Lainnya...' && formData.customCategory.trim() !== '') {
-          finalCategory = formData.customCategory.trim();
-          if (!newCategoryMap[finalType].includes(finalCategory)) {
-            newCategoryMap[finalType] = [...(newCategoryMap[finalType] || []), finalCategory];
-            mapUpdated = true;
-          }
-        }
-        if (mapUpdated) setCategoryMap(newCategoryMap);
-
-        const newTransaction = {
-          id: Date.now().toString(), date: formData.date, type: finalType, category: finalCategory,
-          amount: parsedAmount, description: formData.description || '-'
-        };
-
-        setTransactions([newTransaction, ...transactions]);
-        setFormData(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
-      };
-
-      const deleteSelectedTransactions = () => {
-        setModalState({
-          isOpen: true, type: 'confirm', title: 'Hapus Multi Transaksi', message: `Hapus ${selectedIds.size} transaksi terpilih secara permanen?`,
-          onConfirm: () => {
-            setTransactions(prev => prev.filter(t => !selectedIds.has(t.id)));
-            setSelectedIds(new Set()); setIsSelectMode(false);
-          }
-        });
-      };
-
-      const deleteTransactionItem = (id) => {
-        setModalState({
-          isOpen: true, type: 'confirm', title: 'Hapus Transaksi', message: 'Hapus transaksi ini? Saldo akan dikalkulasi ulang ke semula.',
-          onConfirm: () => setTransactions(prev => prev.filter(t => t.id !== id))
-        });
       };
 
       // --- MAIN RENDER DASHBOARD ---
@@ -806,12 +801,17 @@
                   </h1>
                   <p className="text-gray-600 dark:text-gray-400 font-medium mt-1 text-xs sm:text-sm">Pantau keuangan dengan mudah & modern</p>
                 </div>
-                <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 sm:p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors md:hidden">
-                    {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
+                <div className="flex items-center gap-3 md:hidden">
+                  <button onClick={onLogout} className="p-2 sm:p-2.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Logout"><LogOut size={20} /></button>
+                  <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 sm:p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">
+                      {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                  </button>
+                </div>
               </div>
 
-              <div className="hidden md:block absolute right-6 top-6 md:static">
+              <div className="hidden md:flex absolute right-6 top-6 md:static items-center gap-3">
+                 <div className="text-sm font-bold text-gray-500 mr-2">{user?.email}</div>
+                 <button onClick={onLogout} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Logout"><LogOut size={20} /></button>
                  <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">
                     {darkMode ? <Sun size={20} /> : <Moon size={20} />}
                   </button>
@@ -825,9 +825,7 @@
                       value={globalFilterType} onChange={(e) => setGlobalFilterType(e.target.value)}
                       className="bg-white dark:bg-gray-800 font-semibold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none focus:border-indigo-500 w-full sm:w-auto flex-1"
                     >
-                      <option value="month">Bulanan</option>
-                      <option value="date">Harian</option>
-                      <option value="all">Semua Waktu</option>
+                      <option value="month">Bulanan</option><option value="date">Harian</option><option value="all">Semua Waktu</option>
                     </select>
                     {globalFilterType === 'month' && <input type="month" value={globalFilterValue} onChange={(e) => setGlobalFilterValue(e.target.value)} className="bg-white dark:bg-gray-800 font-semibold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none w-full sm:w-auto flex-1" />}
                     {globalFilterType === 'date' && <input type="date" value={globalFilterValue} onChange={(e) => setGlobalFilterValue(e.target.value)} className="bg-white dark:bg-gray-800 font-semibold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none w-full sm:w-auto flex-1" />}
@@ -836,269 +834,179 @@
               )}
             </div>
 
-            {currentView === 'savings' && renderSavingsView()}
-            {currentView === 'wallets' && renderWalletsView()}
-            {currentView === 'history' && renderHistoryView()}
-            {currentView === 'planner' && renderPlannerView()}
-
-            {currentView === 'dashboard' && (
+            {isFetchingData ? (
+              <div className="py-20 text-center text-gray-500 font-bold animate-pulse">Mengambil data dari awan...</div>
+            ) : (
               <>
-                {/* Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-                  <div onClick={() => setCurrentView('wallets')} className={`bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                    <div className="p-2.5 sm:p-3 bg-blue-200 dark:bg-blue-700/50 text-blue-700 dark:text-blue-300 rounded-xl group-hover:scale-110 transition-transform border border-blue-300 dark:border-blue-600"><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 font-bold truncate">Saldo Dompet <span className="hidden sm:inline opacity-70 ml-1">(All)</span></p>
-                      <h3 className="text-lg sm:text-xl font-black text-blue-900 dark:text-blue-100 mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.saldoSaatIni)}</h3>
-                      <p className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 mt-1 opacity-80 sm:hidden">Klik detail ➔</p>
-                    </div>
-                  </div>
-                  
-                  <div onClick={() => { setHistoryType('pemasukan'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                    <div className="p-2.5 sm:p-3 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-xl border border-green-200 dark:border-green-800 group-hover:scale-110 transition-transform"><TrendingUp size={20} className="sm:w-6 sm:h-6" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-bold group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors truncate">Pemasukan <span className="hidden sm:inline opacity-70 ml-1">(Filter)</span></p>
-                      <h3 className="text-lg sm:text-xl font-black text-gray-800 dark:text-white mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.pemasukanFilter)}</h3>
-                      <p className="text-[10px] sm:text-xs text-green-600 dark:text-green-400 mt-1 opacity-80 sm:hidden">Klik riwayat ➔</p>
-                    </div>
-                  </div>
-                  
-                  <div onClick={() => { setHistoryType('pengeluaran'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                    <div className="p-2.5 sm:p-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-800 group-hover:scale-110 transition-transform"><TrendingDown size={20} className="sm:w-6 sm:h-6" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-bold group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors truncate">Pengeluaran <span className="hidden sm:inline opacity-70 ml-1">(Filter)</span></p>
-                      <h3 className="text-lg sm:text-xl font-black text-gray-800 dark:text-white mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.pengeluaranFilter)}</h3>
-                      <p className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 mt-1 opacity-80 sm:hidden">Klik riwayat ➔</p>
-                    </div>
-                  </div>
-                  
-                  <div onClick={() => setCurrentView('savings')} className={`bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/60 dark:to-purple-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                    <div className="p-2.5 sm:p-3 bg-purple-200 dark:bg-purple-700/50 text-purple-700 dark:text-purple-300 rounded-xl group-hover:scale-110 transition-transform border border-purple-300 dark:border-purple-600"><PiggyBank size={20} className="sm:w-6 sm:h-6" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm text-purple-800 dark:text-purple-300 font-bold truncate">Total Tabungan <span className="hidden sm:inline opacity-70 ml-1">(All)</span></p>
-                      <h3 className="text-lg sm:text-xl font-black text-purple-900 dark:text-purple-100 mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.totalTabungan)}</h3>
-                      <p className="text-[10px] sm:text-xs text-purple-600 dark:text-purple-400 mt-1 opacity-80 sm:hidden">Klik detail ➔</p>
-                    </div>
-                  </div>
+                {currentView === 'savings' && renderSavingsView()}
+                {currentView === 'wallets' && renderWalletsView()}
+                {currentView === 'history' && renderHistoryView()}
+                {currentView === 'planner' && renderPlannerView()}
 
-                  {/* Rencana Bulanan Card */}
-                  <div onClick={() => setCurrentView('planner')} className={`bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/60 dark:to-amber-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                    <div className="p-2.5 sm:p-3 bg-amber-200 dark:bg-amber-700/50 text-amber-700 dark:text-amber-300 rounded-xl group-hover:scale-110 transition-transform border border-amber-300 dark:border-amber-600"><ClipboardList size={20} className="sm:w-6 sm:h-6" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 font-bold truncate">Rencana Bulanan <span className="hidden sm:inline opacity-70 ml-1">(Plan)</span></p>
-                      <h3 className="text-lg sm:text-xl font-black text-amber-900 dark:text-amber-100 mt-0.5 sm:mt-1 tracking-tight truncate">{plans.filter(p => p.month === new Date().toISOString().slice(0,7) && !p.isCompleted).length} Tugas</h3>
-                      <p className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 mt-1 opacity-80 sm:hidden">Klik buat ➔</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Layout Grid - Responsive stacking & heights */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch lg:h-[680px]">
-                  
-                  {/* Form Input Container */}
-                  <div className={`lg:col-span-4 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col ${box3D}`}>
-                    <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-4 sm:mb-5 flex items-center gap-2 shrink-0">
-                      <PlusCircle size={20} className="text-indigo-600 dark:text-indigo-400 sm:w-[22px] sm:h-[22px]" /> Catat Transaksi
-                    </h2>
-                    
-                    <div className="flex-1 lg:overflow-y-auto lg:pr-2 pb-1">
-                      <form onSubmit={handleSubmitTransaction} className="space-y-3 sm:space-y-4">
-                        <div>
-                          <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Tanggal</label>
-                          <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Calendar size={16} className="text-gray-500 sm:w-[18px] sm:h-[18px]" /></div>
-                            <input type="date" name="date" required value={formData.date} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors text-sm sm:text-base" />
-                          </div>
+                {currentView === 'dashboard' && (
+                  <>
+                    {/* Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+                      <div onClick={() => setCurrentView('wallets')} className={`bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                        <div className="p-2.5 sm:p-3 bg-blue-200 dark:bg-blue-700/50 text-blue-700 dark:text-blue-300 rounded-xl group-hover:scale-110 transition-transform border border-blue-300 dark:border-blue-600"><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 font-bold truncate">Saldo Dompet <span className="hidden sm:inline opacity-70 ml-1">(All)</span></p>
+                          <h3 className="text-lg sm:text-xl font-black text-blue-900 dark:text-blue-100 mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.saldoSaatIni)}</h3>
+                          <p className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 mt-1 opacity-80 sm:hidden">Klik detail ➔</p>
                         </div>
-
-                        <div>
-                          <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Jenis Transaksi</label>
-                          <select name="type" value={formData.type} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors cursor-pointer text-sm sm:text-base">
-                            {Object.keys(categoryMap).map(type => <option key={type} value={type}>{type}</option>)}
-                            <option value="Lainnya...">Lainnya...</option>
-                          </select>
-                          {formData.type === 'Lainnya...' && (
-                            <input type="text" name="customType" placeholder="Ketik jenis transaksi baru..." required value={formData.customType} onChange={handleInputChange} className="mt-2 w-full border-2 border-indigo-300 dark:border-indigo-600 rounded-lg p-2 sm:p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-gray-900 dark:text-white font-medium outline-none text-sm sm:text-base" />
-                          )}
+                      </div>
+                      
+                      <div onClick={() => { setHistoryType('pemasukan'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                        <div className="p-2.5 sm:p-3 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-xl border border-green-200 dark:border-green-800 group-hover:scale-110 transition-transform"><TrendingUp size={20} className="sm:w-6 sm:h-6" /></div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-bold group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors truncate">Pemasukan <span className="hidden sm:inline opacity-70 ml-1">(Filter)</span></p>
+                          <h3 className="text-lg sm:text-xl font-black text-gray-800 dark:text-white mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.pemasukanFilter)}</h3>
+                          <p className="text-[10px] sm:text-xs text-green-600 dark:text-green-400 mt-1 opacity-80 sm:hidden">Klik riwayat ➔</p>
                         </div>
-
-                        <div className="relative">
-                          <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Kategori</label>
-                          <div 
-                            onClick={() => setCatDropdownOpen(!catDropdownOpen)}
-                            className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium flex justify-between items-center cursor-pointer select-none transition-colors focus:border-gray-900 dark:focus:border-gray-400 text-sm sm:text-base"
-                          >
-                            <span className="truncate pr-2">{formData.category}</span>
-                            <ChevronDown size={16} className="text-gray-500 shrink-0 sm:w-[18px] sm:h-[18px]" />
-                          </div>
-                          
-                          {catDropdownOpen && (
-                            <>
-                              <div className="fixed inset-0 z-40" onClick={() => setCatDropdownOpen(false)}></div>
-                              <div className="absolute z-50 w-full mt-1 sm:mt-2 bg-white dark:bg-gray-800 border-2 border-gray-800 dark:border-gray-600 rounded-lg shadow-[4px_4px_0_0_#000000] max-h-48 overflow-y-auto">
-                                {(categoryMap[formData.type] || []).map(cat => (
-                                  <div key={cat} className="flex justify-between items-center p-2.5 sm:p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer font-medium border-b border-gray-100 dark:border-gray-700 text-sm sm:text-base">
-                                    <span onClick={() => handleCatSelect(cat)} className="flex-1 text-gray-900 dark:text-white truncate">{cat}</span>
-                                    <div 
-                                      className="p-1 sm:p-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg ml-2 group transition-colors shrink-0"
-                                      onMouseDown={(e) => deleteCategoryFromMap(e, formData.type, cat)}
-                                    >
-                                      <Trash2 size={14} className="text-gray-400 group-hover:text-red-500 sm:w-4 sm:h-4" />
-                                    </div>
-                                  </div>
-                                ))}
-                                <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer text-gray-900 dark:text-white font-bold text-sm sm:text-base" onClick={() => handleCatSelect('Lainnya...')}>
-                                  + Tambah Lainnya...
-                                </div>
-                              </div>
-                            </>
-                          )}
-                          {formData.category === 'Lainnya...' && (
-                            <input type="text" name="customCategory" placeholder="Ketik kategori baru..." required value={formData.customCategory} onChange={handleInputChange} className="mt-2 w-full border-2 border-indigo-300 dark:border-indigo-600 rounded-lg p-2 sm:p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-gray-900 dark:text-white font-medium outline-none text-sm sm:text-base" />
-                          )}
+                      </div>
+                      
+                      <div onClick={() => { setHistoryType('pengeluaran'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                        <div className="p-2.5 sm:p-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-800 group-hover:scale-110 transition-transform"><TrendingDown size={20} className="sm:w-6 sm:h-6" /></div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-bold group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors truncate">Pengeluaran <span className="hidden sm:inline opacity-70 ml-1">(Filter)</span></p>
+                          <h3 className="text-lg sm:text-xl font-black text-gray-800 dark:text-white mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.pengeluaranFilter)}</h3>
+                          <p className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 mt-1 opacity-80 sm:hidden">Klik riwayat ➔</p>
                         </div>
-
-                        <div>
-                          <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Nominal (Rp)</label>
-                          <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign size={16} className="text-gray-500 sm:w-[18px] sm:h-[18px]" /></div>
-                            <input type="text" inputMode="numeric" name="amount" placeholder="0" required value={formData.amount} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-black outline-none focus:border-gray-900 dark:focus:border-white transition-colors tracking-tight text-base sm:text-lg" />
-                          </div>
+                      </div>
+                      
+                      <div onClick={() => setCurrentView('savings')} className={`bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/60 dark:to-purple-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                        <div className="p-2.5 sm:p-3 bg-purple-200 dark:bg-purple-700/50 text-purple-700 dark:text-purple-300 rounded-xl group-hover:scale-110 transition-transform border border-purple-300 dark:border-purple-600"><PiggyBank size={20} className="sm:w-6 sm:h-6" /></div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-purple-800 dark:text-purple-300 font-bold truncate">Total Tabungan <span className="hidden sm:inline opacity-70 ml-1">(All)</span></p>
+                          <h3 className="text-lg sm:text-xl font-black text-purple-900 dark:text-purple-100 mt-0.5 sm:mt-1 tracking-tight truncate">{formatRupiah(stats.totalTabungan)}</h3>
+                          <p className="text-[10px] sm:text-xs text-purple-600 dark:text-purple-400 mt-1 opacity-80 sm:hidden">Klik detail ➔</p>
                         </div>
+                      </div>
 
-                        <div>
-                          <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Keterangan</label>
-                          <input type="text" name="description" placeholder="Cth: Makan siang..." value={formData.description} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors text-sm sm:text-base" />
+                      <div onClick={() => setCurrentView('planner')} className={`bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/60 dark:to-amber-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                        <div className="p-2.5 sm:p-3 bg-amber-200 dark:bg-amber-700/50 text-amber-700 dark:text-amber-300 rounded-xl group-hover:scale-110 transition-transform border border-amber-300 dark:border-amber-600"><ClipboardList size={20} className="sm:w-6 sm:h-6" /></div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 font-bold truncate">Rencana Bulanan <span className="hidden sm:inline opacity-70 ml-1">(Plan)</span></p>
+                          <h3 className="text-lg sm:text-xl font-black text-amber-900 dark:text-amber-100 mt-0.5 sm:mt-1 tracking-tight truncate">{plans.filter(p => p.month === new Date().toISOString().slice(0,7) && !p.is_completed).length} Tugas</h3>
+                          <p className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 mt-1 opacity-80 sm:hidden">Klik buat ➔</p>
                         </div>
-
-                        <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 sm:py-3.5 px-4 rounded-xl transition-all mt-4 sm:mt-6 border-2 border-indigo-900 shadow-[2px_2px_0_0_#312e81] active:shadow-none active:translate-y-[2px] text-sm sm:text-base">
-                          Simpan Transaksi
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-
-                  {/* Transaction History Container */}
-                  <div className={`lg:col-span-8 bg-white dark:bg-gray-800 rounded-2xl flex flex-col h-[500px] lg:h-full overflow-hidden ${box3D}`}>
-                    <div className="p-4 sm:p-6 border-b-2 border-gray-200 dark:border-gray-700 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 gap-3 sm:gap-0">
-                      <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white">Riwayat Transaksi</h2>
-                      <div className="flex gap-2 w-full sm:w-auto">
-                        {isSelectMode ? (
-                           <button onClick={deleteSelectedTransactions} disabled={selectedIds.size === 0} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold border-2 border-red-900 disabled:opacity-50 disabled:cursor-not-allowed shadow-[2px_2px_0_0_#7f1d1d] active:shadow-none active:translate-y-[2px] transition-all">
-                             <Trash2 size={14} className="sm:w-4 sm:h-4" /> Hapus ({selectedIds.size})
-                           </button>
-                        ) : (
-                          <button onClick={() => {
-                             const headers = ['ID,Tanggal,Tipe,Kategori,Nominal,Keterangan'];
-                             const csvData = transactions.map(t => `${t.id},${t.date},${t.type},${t.category},${t.amount},"${t.description.replace(/"/g, '""')}"`);
-                             const blob = new Blob([headers.concat(csvData).join('\n')], { type: 'text/csv;charset=utf-8;' });
-                             const link = document.createElement('a');
-                             link.href = URL.createObjectURL(blob);
-                             link.setAttribute('download', `Keuangan_${new Date().toISOString().split('T')[0]}.csv`);
-                             document.body.appendChild(link); link.click(); document.body.removeChild(link);
-                          }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold border-2 border-green-900 shadow-[2px_2px_0_0_#14532d] active:shadow-none active:translate-y-[2px] transition-all">
-                            <Download size={14} className="sm:w-4 sm:h-4" /> Export CSV
-                          </button>
-                        )}
                       </div>
                     </div>
-                    
-                    {/* Scrollable Table Area */}
-                    <div className="flex-1 overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-gray-900/50 relative">
-                      <table className="w-full text-left border-collapse min-w-[800px]">
-                        <thead className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs sm:text-sm sticky top-0 z-10 shadow-sm border-b-2 border-gray-200 dark:border-gray-700">
-                          <tr>
-                            {isSelectMode && <th className="p-2 sm:p-3 w-10 sm:w-12 text-center border-r border-gray-100 dark:border-gray-700">✓</th>}
-                            <th className="p-2 sm:p-3 font-bold whitespace-nowrap">Tanggal</th>
-                            <th className="p-2 sm:p-3 font-bold">Tipe</th>
-                            <th className="p-2 sm:p-3 font-bold">Kategori</th>
-                            <th className="p-2 sm:p-3 font-bold">Keterangan</th>
-                            <th className="p-2 sm:p-3 font-bold text-right">Nominal</th>
-                            <th className="p-2 sm:p-3 font-bold text-center">Aksi</th>
-                          </tr>
-                          <tr className="bg-gray-100 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-700">
-                            {isSelectMode && <th className="p-1 border-r border-gray-200 dark:border-gray-600"></th>}
-                            <th className="p-1 px-2">
-                              <input type="date" value={tableFilters.date} onChange={e => setTableFilters({...tableFilters, date: e.target.value})} className="w-full min-w-[110px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500" />
-                            </th>
-                            <th className="p-1 px-2">
-                              <select value={tableFilters.type} onChange={e => setTableFilters({...tableFilters, type: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500">
-                                <option value="">Semua</option>{uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                              </select>
-                            </th>
-                            <th className="p-1 px-2">
-                              <select value={tableFilters.category} onChange={e => setTableFilters({...tableFilters, category: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500">
-                                <option value="">Semua</option>{uniqueCats.map(c => <option key={c} value={c}>{c}</option>)}
-                              </select>
-                            </th>
-                            <th className="p-1 px-2">
-                              <input type="text" placeholder="Cari..." value={tableFilters.desc} onChange={e => setTableFilters({...tableFilters, desc: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500" />
-                            </th>
-                            <th className="p-1 px-2"></th>
-                            <th className="p-1 px-2 text-center">
-                              <button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedIds(new Set()); }} className={`text-[11px] sm:text-xs font-bold px-1.5 py-1.5 rounded w-full transition-colors ${isSelectMode ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 hover:bg-indigo-200'}`}>
-                                {isSelectMode ? 'Batal' : 'Pilih Baris'}
-                              </button>
-                            </th>
-                          </tr>
-                        </thead>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch lg:h-[680px]">
+                      
+                      <div className={`lg:col-span-4 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col ${box3D}`}>
+                        <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-4 sm:mb-5 flex items-center gap-2 shrink-0"><PlusCircle size={20} className="text-indigo-600 dark:text-indigo-400 sm:w-[22px] sm:h-[22px]" /> Catat Transaksi</h2>
+                        <div className="flex-1 lg:overflow-y-auto lg:pr-2 pb-1">
+                          <form onSubmit={handleSubmitTransaction} className="space-y-3 sm:space-y-4">
+                            <div>
+                              <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Tanggal</label>
+                              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Calendar size={16} className="text-gray-500 sm:w-[18px] sm:h-[18px]" /></div><input type="date" name="date" required value={formData.date} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors text-sm sm:text-base" /></div>
+                            </div>
+
+                            <div>
+                              <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Jenis Transaksi</label>
+                              <select name="type" value={formData.type} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors cursor-pointer text-sm sm:text-base">{Object.keys(categoryMap).map(type => <option key={type} value={type}>{type}</option>)}<option value="Lainnya...">Lainnya...</option></select>
+                              {formData.type === 'Lainnya...' && <input type="text" name="customType" placeholder="Ketik jenis transaksi baru..." required value={formData.customType} onChange={handleInputChange} className="mt-2 w-full border-2 border-indigo-300 dark:border-indigo-600 rounded-lg p-2 sm:p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-gray-900 dark:text-white font-medium outline-none text-sm sm:text-base" />}
+                            </div>
+
+                            <div className="relative">
+                              <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Kategori</label>
+                              <div onClick={() => setCatDropdownOpen(!catDropdownOpen)} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium flex justify-between items-center cursor-pointer select-none transition-colors focus:border-gray-900 dark:focus:border-gray-400 text-sm sm:text-base"><span className="truncate pr-2">{formData.category}</span><ChevronDown size={16} className="text-gray-500 shrink-0 sm:w-[18px] sm:h-[18px]" /></div>
+                              {catDropdownOpen && (
+                                <><div className="fixed inset-0 z-40" onClick={() => setCatDropdownOpen(false)}></div>
+                                  <div className="absolute z-50 w-full mt-1 sm:mt-2 bg-white dark:bg-gray-800 border-2 border-gray-800 dark:border-gray-600 rounded-lg shadow-[4px_4px_0_0_#000000] max-h-48 overflow-y-auto">
+                                    {(categoryMap[formData.type] || []).map(cat => (
+                                      <div key={cat} className="flex justify-between items-center p-2.5 sm:p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer font-medium border-b border-gray-100 dark:border-gray-700 text-sm sm:text-base"><span onClick={() => handleCatSelect(cat)} className="flex-1 text-gray-900 dark:text-white truncate">{cat}</span><div className="p-1 sm:p-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg ml-2 group transition-colors shrink-0" onMouseDown={(e) => deleteCategoryFromMap(e, formData.type, cat)}><Trash2 size={14} className="text-gray-400 group-hover:text-red-500 sm:w-4 sm:h-4" /></div></div>
+                                    ))}
+                                    <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer text-gray-900 dark:text-white font-bold text-sm sm:text-base" onClick={() => handleCatSelect('Lainnya...')}>+ Tambah Lainnya...</div>
+                                  </div></>
+                              )}
+                              {formData.category === 'Lainnya...' && <input type="text" name="customCategory" placeholder="Ketik kategori baru..." required value={formData.customCategory} onChange={handleInputChange} className="mt-2 w-full border-2 border-indigo-300 dark:border-indigo-600 rounded-lg p-2 sm:p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-gray-900 dark:text-white font-medium outline-none text-sm sm:text-base" />}
+                            </div>
+
+                            <div>
+                              <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Nominal (Rp)</label>
+                              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign size={16} className="text-gray-500 sm:w-[18px] sm:h-[18px]" /></div><input type="text" inputMode="numeric" name="amount" placeholder="0" required value={formData.amount} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-black outline-none focus:border-gray-900 dark:focus:border-white transition-colors tracking-tight text-base sm:text-lg" /></div>
+                            </div>
+
+                            <div>
+                              <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Keterangan</label>
+                              <input type="text" name="description" placeholder="Cth: Makan siang..." value={formData.description} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors text-sm sm:text-base" />
+                            </div>
+
+                            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 sm:py-3.5 px-4 rounded-xl transition-all mt-4 sm:mt-6 border-2 border-indigo-900 shadow-[2px_2px_0_0_#312e81] active:shadow-none active:translate-y-[2px] text-sm sm:text-base">Simpan Transaksi</button>
+                          </form>
+                        </div>
+                      </div>
+
+                      <div className={`lg:col-span-8 bg-white dark:bg-gray-800 rounded-2xl flex flex-col h-[500px] lg:h-full overflow-hidden ${box3D}`}>
+                        <div className="p-4 sm:p-6 border-b-2 border-gray-200 dark:border-gray-700 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 gap-3 sm:gap-0">
+                          <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white">Riwayat Transaksi</h2>
+                          <div className="flex gap-2 w-full sm:w-auto">
+                            {isSelectMode ? (
+                               <button onClick={deleteSelectedTransactions} disabled={selectedIds.size === 0} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold border-2 border-red-900 disabled:opacity-50 disabled:cursor-not-allowed shadow-[2px_2px_0_0_#7f1d1d] active:shadow-none active:translate-y-[2px] transition-all"><Trash2 size={14} className="sm:w-4 sm:h-4" /> Hapus ({selectedIds.size})</button>
+                            ) : (
+                              <button onClick={() => {
+                                 const headers = ['ID,Tanggal,Tipe,Kategori,Nominal,Keterangan'];
+                                 const csvData = transactions.map(t => `${t.id},${t.date},${t.type},${t.category},${t.amount},"${t.description.replace(/"/g, '""')}"`);
+                                 const blob = new Blob([headers.concat(csvData).join('\n')], { type: 'text/csv;charset=utf-8;' });
+                                 const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.setAttribute('download', `Keuangan_${new Date().toISOString().split('T')[0]}.csv`);
+                                 document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                              }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold border-2 border-green-900 shadow-[2px_2px_0_0_#14532d] active:shadow-none active:translate-y-[2px] transition-all"><Download size={14} className="sm:w-4 sm:h-4" /> Export CSV</button>
+                            )}
+                          </div>
+                        </div>
                         
-                        <tbody className="text-xs sm:text-sm">
-                          {filteredForTable.length === 0 ? (
-                            <tr>
-                              <td colSpan={isSelectMode ? "7" : "6"} className="text-center text-gray-500 py-12 sm:py-16 bg-white dark:bg-gray-800 h-full">
-                                <Wallet size={40} className="mx-auto mb-3 opacity-20 sm:w-12 sm:h-12" />
-                                <p className="font-bold">Tidak ada transaksi ditemukan.</p>
-                              </td>
-                            </tr>
-                          ) : (
-                            filteredForTable.map((t) => {
-                              const isIncome = t.type.toLowerCase().includes('pemasukan');
-                              const isSaving = t.type.toLowerCase().includes('tabungan');
-                              
-                              return (
-                                <tr key={t.id} className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                  {isSelectMode && (
-                                    <td className="p-2 sm:p-3 text-center border-r border-gray-100 dark:border-gray-700">
-                                      <input 
-                                        type="checkbox" checked={selectedIds.has(t.id)} onChange={() => toggleSelectTransaction(t.id)} 
-                                        className="w-4 h-4 rounded cursor-pointer accent-indigo-600"
-                                      />
-                                    </td>
-                                  )}
-                                  <td className="p-3 sm:p-4 text-gray-700 dark:text-gray-300 whitespace-nowrap font-medium">{t.date}</td>
-                                  <td className="p-3 sm:p-4">
-                                    <span className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-bold inline-block border whitespace-nowrap
-                                      ${isIncome ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' : 
-                                        isSaving ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-400' : 
-                                        'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400'}`}
-                                    >
-                                      {t.type.toUpperCase()}
-                                    </span>
-                                  </td>
-                                  <td className="p-3 sm:p-4 text-gray-900 dark:text-gray-100 font-bold max-w-[120px] truncate sm:max-w-none">{t.category}</td>
-                                  <td className="p-3 sm:p-4 text-gray-600 dark:text-gray-400 font-medium max-w-[150px] truncate sm:max-w-none">{t.description}</td>
-                                  <td className={`p-3 sm:p-4 text-right font-black whitespace-nowrap tracking-tight text-sm sm:text-base
-                                      ${isIncome ? 'text-green-600 dark:text-green-400' : 
-                                        isSaving ? 'text-purple-600 dark:text-purple-400' : 
-                                        'text-red-600 dark:text-red-400'}`}
-                                  >
-                                    {isIncome ? '+' : '-'}{formatRupiah(t.amount)}
-                                  </td>
-                                  <td className="p-3 sm:p-4 text-center">
-                                    <button onClick={() => deleteTransactionItem(t.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-1.5 sm:p-2 rounded-lg transition-all" title="Hapus Permanen">
-                                      <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
+                        <div className="flex-1 overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-gray-900/50 relative">
+                          <table className="w-full text-left border-collapse min-w-[800px]">
+                            <thead className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs sm:text-sm sticky top-0 z-10 shadow-sm border-b-2 border-gray-200 dark:border-gray-700">
+                              <tr>
+                                {isSelectMode && <th className="p-2 sm:p-3 w-10 sm:w-12 text-center border-r border-gray-100 dark:border-gray-700">✓</th>}
+                                <th className="p-2 sm:p-3 font-bold whitespace-nowrap">Tanggal</th>
+                                <th className="p-2 sm:p-3 font-bold">Tipe</th>
+                                <th className="p-2 sm:p-3 font-bold">Kategori</th>
+                                <th className="p-2 sm:p-3 font-bold">Keterangan</th>
+                                <th className="p-2 sm:p-3 font-bold text-right">Nominal</th>
+                                <th className="p-2 sm:p-3 font-bold text-center">Aksi</th>
+                              </tr>
+                              <tr className="bg-gray-100 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-700">
+                                {isSelectMode && <th className="p-1 border-r border-gray-200 dark:border-gray-600"></th>}
+                                <th className="p-1 px-2"><input type="date" value={tableFilters.date} onChange={e => setTableFilters({...tableFilters, date: e.target.value})} className="w-full min-w-[110px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500" /></th>
+                                <th className="p-1 px-2"><select value={tableFilters.type} onChange={e => setTableFilters({...tableFilters, type: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500"><option value="">Semua</option>{uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}</select></th>
+                                <th className="p-1 px-2"><select value={tableFilters.category} onChange={e => setTableFilters({...tableFilters, category: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500"><option value="">Semua</option>{uniqueCats.map(c => <option key={c} value={c}>{c}</option>)}</select></th>
+                                <th className="p-1 px-2"><input type="text" placeholder="Cari..." value={tableFilters.desc} onChange={e => setTableFilters({...tableFilters, desc: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500" /></th>
+                                <th className="p-1 px-2"></th>
+                                <th className="p-1 px-2 text-center"><button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedIds(new Set()); }} className={`text-[11px] sm:text-xs font-bold px-1.5 py-1.5 rounded w-full transition-colors ${isSelectMode ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 hover:bg-indigo-200'}`}>{isSelectMode ? 'Batal' : 'Pilih Baris'}</button></th>
+                              </tr>
+                            </thead>
+                            <tbody className="text-xs sm:text-sm">
+                              {filteredForTable.length === 0 ? (
+                                <tr><td colSpan={isSelectMode ? "7" : "6"} className="text-center text-gray-500 py-12 sm:py-16 bg-white dark:bg-gray-800 h-full"><Wallet size={40} className="mx-auto mb-3 opacity-20 sm:w-12 sm:h-12" /><p className="font-bold">Tidak ada transaksi ditemukan.</p></td></tr>
+                              ) : (
+                                filteredForTable.map((t) => {
+                                  const isIncome = t.type.toLowerCase().includes('pemasukan');
+                                  const isSaving = t.type.toLowerCase().includes('tabungan');
+                                  return (
+                                    <tr key={t.id} className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                      {isSelectMode && <td className="p-2 sm:p-3 text-center border-r border-gray-100 dark:border-gray-700"><input type="checkbox" checked={selectedIds.has(t.id)} onChange={() => toggleSelectTransaction(t.id)} className="w-4 h-4 rounded cursor-pointer accent-indigo-600"/></td>}
+                                      <td className="p-3 sm:p-4 text-gray-700 dark:text-gray-300 whitespace-nowrap font-medium">{t.date}</td>
+                                      <td className="p-3 sm:p-4"><span className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-bold inline-block border whitespace-nowrap ${isIncome ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' : isSaving ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-400' : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400'}`}>{t.type.toUpperCase()}</span></td>
+                                      <td className="p-3 sm:p-4 text-gray-900 dark:text-gray-100 font-bold max-w-[120px] truncate sm:max-w-none">{t.category}</td>
+                                      <td className="p-3 sm:p-4 text-gray-600 dark:text-gray-400 font-medium max-w-[150px] truncate sm:max-w-none">{t.description}</td>
+                                      <td className={`p-3 sm:p-4 text-right font-black whitespace-nowrap tracking-tight text-sm sm:text-base ${isIncome ? 'text-green-600 dark:text-green-400' : isSaving ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}`}>{isIncome ? '+' : '-'}{formatRupiah(t.amount)}</td>
+                                      <td className="p-3 sm:p-4 text-center"><button onClick={() => deleteTransactionItem(t.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-1.5 sm:p-2 rounded-lg transition-all" title="Hapus Permanen"><Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button></td>
+                                    </tr>
+                                  );
+                                })
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </>
             )}
 
