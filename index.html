@@ -318,6 +318,7 @@
 
       const sumOfWallets = wallets.reduce((acc, w) => acc + w.balance, 0);
 
+      // --- SUPABASE CRUD TRANSACTIONS ---
       const handleSubmitTransaction = async (e) => {
         e.preventDefault();
         const parsedAmount = parseInt(formData.amount.replace(/[^0-9]/g, ''), 10);
@@ -330,6 +331,7 @@
         }
         if (formData.category === 'Lainnya...' && formData.customCategory.trim() !== '') {
           finalCategory = formData.customCategory.trim();
+          // Simpan ke DB Categories jika baru
           if (!categoryMap[finalType]?.includes(finalCategory)) {
             const { data, error } = await supabase.from('categories').insert([{ user_id: user.id, type: finalType, name: finalCategory }]).select();
             if (error) return setModalState({ isOpen: true, type: 'alert', title: 'Gagal Simpan Kategori', message: error.message });
@@ -377,6 +379,7 @@
         });
       };
 
+      // --- SUPABASE CRUD SAVINGS ---
       const renderSavingsView = () => {
         const handleGoalSubmit = async (e) => {
           e.preventDefault();
@@ -431,7 +434,7 @@
             <div className={`bg-purple-100 dark:bg-purple-900/30 p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${box3D}`}>
               <div className="w-full md:w-auto">
                 <p className="text-purple-800 dark:text-purple-300 font-bold text-sm sm:text-base">Total Seluruh Tabungan</p>
-                <h3 className="text-2xl sm:text-3xl font-black text-purple-900 dark:text-purple-100 mt-1 tracking-tight truncate">{renderAmount(stats.totalTabungan)}</h3>
+                <h3 className="text-2xl sm:text-3xl font-black text-purple-900 dark:text-purple-100 mt-1 tracking-tighter truncate">{renderAmount(stats.totalTabungan)}</h3>
               </div>
               <button onClick={() => setShowGoalForm(!showGoalForm)} className={`w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 sm:py-2.5 rounded-lg font-bold ${box3DHover}`}>{showGoalForm ? "Batal" : "+ Buat Target Baru"}</button>
             </div>
@@ -534,7 +537,7 @@
             <div className={`bg-blue-100 dark:bg-blue-900/30 p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${box3D}`}>
               <div className="w-full md:w-auto">
                 <p className="text-blue-800 dark:text-blue-300 font-bold text-sm sm:text-base">Saldo Sistem (Kalkulasi Transaksi)</p>
-                <h3 className="text-2xl sm:text-3xl font-black text-blue-900 dark:text-blue-100 mt-1 tracking-tight truncate">{renderAmount(stats.saldoSaatIni)}</h3>
+                <h3 className="text-2xl sm:text-3xl font-black text-blue-900 dark:text-blue-100 mt-1 tracking-tighter truncate">{renderAmount(stats.saldoSaatIni)}</h3>
                 {sumOfWallets !== stats.saldoSaatIni && (
                   <p className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 mt-2 flex items-start sm:items-center gap-1.5 bg-blue-200 dark:bg-blue-800/50 px-3 py-1.5 rounded-lg break-words w-full">
                     <AlertCircle size={14} className="shrink-0 mt-0.5 sm:mt-0"/> <span>Selisih {renderAmount(Math.abs(stats.saldoSaatIni - sumOfWallets))} antara Sistem dan Total Dompet.</span>
@@ -577,7 +580,7 @@
                   } })} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
                   <div className={`p-2.5 sm:p-3 rounded-xl inline-block mb-3 sm:mb-4 shadow-sm ${wallet.color}`}><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
                   <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 pr-6 break-words leading-tight">{wallet.name}</h3>
-                  <p className="text-xl sm:text-2xl font-black text-gray-800 dark:text-gray-200 my-1.5 sm:my-2 tracking-tight truncate">{renderAmount(wallet.balance)}</p>
+                  <p className="text-xl sm:text-2xl font-black text-gray-800 dark:text-gray-200 my-1.5 sm:my-2 tracking-tighter truncate">{renderAmount(wallet.balance)}</p>
                   <button onClick={() => updateWalletBalance(wallet.id)} className="w-full flex items-center justify-center gap-2 mt-4 sm:mt-5 border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 py-2.5 rounded-lg font-bold transition-colors text-sm"><Edit2 size={16} /> Sesuaikan Saldo</button>
                 </div>
               ))}
@@ -625,7 +628,7 @@
             <div className={`${headerBgClass} p-4 sm:p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 ${box3D}`}>
               <div className="w-full lg:w-auto">
                 <p className={`${textColorClass} font-bold text-sm sm:text-base`}>Total {historyTimeFilterType === 'all' ? '(Semua Waktu)' : historyTimeFilterType === 'month' ? '(Bulan Ini)' : '(Harian)'}</p>
-                <h3 className={`text-2xl sm:text-3xl font-black ${amountColorClass} mt-1 tracking-tight truncate`}>{renderAmount(totalNominal)}</h3>
+                <h3 className={`text-2xl sm:text-3xl font-black ${amountColorClass} mt-1 tracking-tighter truncate`}>{renderAmount(totalNominal)}</h3>
               </div>
               <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-3">
                  <div className="flex flex-1 sm:flex-none items-center gap-2 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-500 rounded-lg p-2.5 sm:p-2 shadow-sm">
@@ -897,12 +900,12 @@
                 {currentView === 'dashboard' && (
                   <>
                     {/* Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
                       <div onClick={() => navigateTo('wallets')} className={`bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
                         <div className="p-2.5 sm:p-3 bg-blue-200 dark:bg-blue-700/50 text-blue-700 dark:text-blue-300 rounded-xl group-hover:scale-110 transition-transform border border-blue-300 dark:border-blue-600"><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-300 font-bold leading-snug">Saldo Dompet <span className="block opacity-75 font-normal mt-0.5">Semua Waktu</span></p>
-                          <h3 className="text-base sm:text-lg lg:text-xl font-black text-blue-900 dark:text-blue-100 mt-1 sm:mt-1.5 tracking-tight break-words">{renderAmount(stats.saldoSaatIni)}</h3>
+                          <h3 className="text-base sm:text-lg xl:text-xl font-black text-blue-900 dark:text-blue-100 mt-1 sm:mt-1.5 tracking-tighter truncate">{renderAmount(stats.saldoSaatIni)}</h3>
                         </div>
                       </div>
                       
@@ -910,7 +913,7 @@
                         <div className="p-2.5 sm:p-3 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-xl border border-green-200 dark:border-green-800 group-hover:scale-110 transition-transform"><TrendingUp size={20} className="sm:w-6 sm:h-6" /></div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] sm:text-xs text-green-800 dark:text-green-300 font-bold leading-snug">Pemasukan <span className="block opacity-75 font-normal mt-0.5">Filter Data</span></p>
-                          <h3 className="text-base sm:text-lg lg:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tight break-words">{renderAmount(stats.pemasukanFilter)}</h3>
+                          <h3 className="text-base sm:text-lg xl:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tighter truncate">{renderAmount(stats.pemasukanFilter)}</h3>
                         </div>
                       </div>
                       
@@ -918,7 +921,7 @@
                         <div className="p-2.5 sm:p-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-800 group-hover:scale-110 transition-transform"><TrendingDown size={20} className="sm:w-6 sm:h-6" /></div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] sm:text-xs text-red-800 dark:text-red-300 font-bold leading-snug">Pengeluaran <span className="block opacity-75 font-normal mt-0.5">Filter Data</span></p>
-                          <h3 className="text-base sm:text-lg lg:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tight break-words">{renderAmount(stats.pengeluaranFilter)}</h3>
+                          <h3 className="text-base sm:text-lg xl:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tighter truncate">{renderAmount(stats.pengeluaranFilter)}</h3>
                         </div>
                       </div>
                       
@@ -926,7 +929,7 @@
                         <div className="p-2.5 sm:p-3 bg-purple-200 dark:bg-purple-700/50 text-purple-700 dark:text-purple-300 rounded-xl group-hover:scale-110 transition-transform border border-purple-300 dark:border-purple-600"><PiggyBank size={20} className="sm:w-6 sm:h-6" /></div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] sm:text-xs text-purple-800 dark:text-purple-300 font-bold leading-snug">Total Tabungan <span className="block opacity-75 font-normal mt-0.5">Semua Waktu</span></p>
-                          <h3 className="text-base sm:text-lg lg:text-xl font-black text-purple-900 dark:text-purple-100 mt-1 sm:mt-1.5 tracking-tight break-words">{renderAmount(stats.totalTabungan)}</h3>
+                          <h3 className="text-base sm:text-lg xl:text-xl font-black text-purple-900 dark:text-purple-100 mt-1 sm:mt-1.5 tracking-tighter truncate">{renderAmount(stats.totalTabungan)}</h3>
                         </div>
                       </div>
 
@@ -934,7 +937,7 @@
                         <div className="p-2.5 sm:p-3 bg-amber-200 dark:bg-amber-700/50 text-amber-700 dark:text-amber-300 rounded-xl group-hover:scale-110 transition-transform border border-amber-300 dark:border-amber-600"><ClipboardList size={20} className="sm:w-6 sm:h-6" /></div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300 font-bold leading-snug">Rencana Bulanan <span className="block opacity-75 font-normal mt-0.5">Bulan Ini</span></p>
-                          <h3 className="text-base sm:text-lg lg:text-xl font-black text-amber-900 dark:text-amber-100 mt-1 sm:mt-1.5 tracking-tight break-words">{plans.filter(p => p.month === new Date().toISOString().slice(0,7) && !p.is_completed).length} Tugas</h3>
+                          <h3 className="text-base sm:text-lg xl:text-xl font-black text-amber-900 dark:text-amber-100 mt-1 sm:mt-1.5 tracking-tighter truncate">{plans.filter(p => p.month === new Date().toISOString().slice(0,7) && !p.is_completed).length} Tugas</h3>
                         </div>
                       </div>
                     </div>
