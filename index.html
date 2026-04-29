@@ -39,7 +39,7 @@
     const SUPABASE_URL = 'https://ncwtnqmwzrnpgsvjhnwv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jd3RucW13enJucGdzdmpobnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjM4MzgsImV4cCI6MjA5MzAzOTgzOH0.tDBX2HOVcbkY4rw8yTIXAy5t_KvSjdFfU-HiDnW4mQg';
     
-    // Inisialisasi Supabase (Dengan pengecekan URL yang valid agar tidak crash)
+    // Inisialisasi Supabase
     let supabase = null;
     let isSupabaseConfigured = false;
     
@@ -256,7 +256,8 @@
           onConfirm: async () => {
             const targetCat = customCategories.find(c => c.type === type && c.name === categoryToDelete);
             if (targetCat) {
-              await supabase.from('categories').delete().eq('id', targetCat.id);
+              const { error } = await supabase.from('categories').delete().eq('id', targetCat.id);
+              if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
               setCustomCategories(prev => prev.filter(c => c.id !== targetCat.id));
             }
             if(formData.category === categoryToDelete) setFormData(prev => ({ ...prev, category: 'Lainnya...' }));
@@ -322,7 +323,8 @@
           finalCategory = formData.customCategory.trim();
           // Simpan ke DB Categories jika baru
           if (!categoryMap[finalType]?.includes(finalCategory)) {
-            const { data } = await supabase.from('categories').insert([{ user_id: user.id, type: finalType, name: finalCategory }]).select();
+            const { data, error } = await supabase.from('categories').insert([{ user_id: user.id, type: finalType, name: finalCategory }]).select();
+            if (error) return setModalState({ isOpen: true, type: 'alert', title: 'Gagal Simpan Kategori', message: error.message });
             if (data) setCustomCategories([...customCategories, ...data]);
           }
         }
@@ -333,6 +335,11 @@
         };
 
         const { data, error } = await supabase.from('transactions').insert([newTx]).select();
+        if (error) {
+          setModalState({ isOpen: true, type: 'alert', title: 'Gagal Menyimpan', message: error.message });
+          return;
+        }
+
         if (data) setTransactions([data[0], ...transactions]);
         setFormData(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
       };
@@ -341,7 +348,8 @@
         setModalState({
           isOpen: true, type: 'confirm', title: 'Hapus Transaksi', message: 'Hapus transaksi ini permanen?',
           onConfirm: async () => {
-            await supabase.from('transactions').delete().eq('id', id);
+            const { error } = await supabase.from('transactions').delete().eq('id', id);
+            if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
             setTransactions(prev => prev.filter(t => t.id !== id));
           }
         });
@@ -352,7 +360,9 @@
           isOpen: true, type: 'confirm', title: 'Hapus Multi Transaksi', message: `Hapus ${selectedIds.size} transaksi terpilih secara permanen?`,
           onConfirm: async () => {
             const idsArray = Array.from(selectedIds);
-            await supabase.from('transactions').delete().in('id', idsArray);
+            const { error } = await supabase.from('transactions').delete().in('id', idsArray);
+            if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
+            
             setTransactions(prev => prev.filter(t => !selectedIds.has(t.id)));
             setSelectedIds(new Set()); setIsSelectMode(false);
           }
@@ -367,7 +377,10 @@
           if (!goalForm.name || isNaN(target) || target <= 0) return;
           
           const newGoal = { user_id: user.id, name: goalForm.name, target, saved: 0, date: goalForm.date || null, urgency: goalForm.urgency };
-          const { data } = await supabase.from('goals').insert([newGoal]).select();
+          const { data, error } = await supabase.from('goals').insert([newGoal]).select();
+          
+          if (error) return setModalState({ isOpen: true, type: 'alert', title: 'Gagal Menyimpan', message: error.message });
+          
           if (data) setGoals([...goals, data[0]]);
           setShowGoalForm(false); setGoalForm({ name: '', target: '', date: '', urgency: 'sedang' });
         };
@@ -383,7 +396,9 @@
               if (isNegative) amount = -amount;
               
               const newSaved = Math.max(0, currentSaved + amount);
-              await supabase.from('goals').update({ saved: newSaved }).eq('id', id);
+              const { error } = await supabase.from('goals').update({ saved: newSaved }).eq('id', id);
+              if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Update', message: error.message }), 300);
+
               setGoals(goals.map(g => g.id === id ? { ...g, saved: newSaved } : g));
             }
           });
@@ -393,7 +408,8 @@
           setModalState({
             isOpen: true, type: 'confirm', title: 'Hapus Target', message: 'Hapus target tabungan ini?', 
             onConfirm: async () => {
-              await supabase.from('goals').delete().eq('id', id);
+              const { error } = await supabase.from('goals').delete().eq('id', id);
+              if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
               setGoals(goals.filter(g => g.id !== id));
             }
           });
@@ -476,7 +492,9 @@
         const submitWallet = async (e) => {
           e.preventDefault(); if (!walletForm.name) return;
           const newWallet = { user_id: user.id, name: walletForm.name, balance: 0, color: walletForm.color };
-          const { data } = await supabase.from('wallets').insert([newWallet]).select();
+          const { data, error } = await supabase.from('wallets').insert([newWallet]).select();
+          if (error) return setModalState({ isOpen: true, type: 'alert', title: 'Gagal Menyimpan', message: error.message });
+          
           if(data) setWallets([...wallets, data[0]]);
           setShowWalletForm(false); setWalletForm({ name: '', color: WalletColors[0].class });
         };
@@ -488,7 +506,9 @@
             onConfirm: async (val) => {
               const balance = parseInt(val.replace(/[^0-9]/g, ''), 10);
               if (!isNaN(balance)) {
-                await supabase.from('wallets').update({ balance }).eq('id', id);
+                const { error } = await supabase.from('wallets').update({ balance }).eq('id', id);
+                if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Update', message: error.message }), 300);
+                
                 setWallets(wallets.map(w => w.id === id ? { ...w, balance } : w));
               } else setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Error', message: 'Nominal tidak valid!' }), 300);
             }
@@ -543,7 +563,11 @@
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               {wallets.map(wallet => (
                 <div key={wallet.id} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl relative ${box3D}`}>
-                  <button onClick={() => setModalState({ isOpen: true, type: 'confirm', title: 'Hapus Dompet', message: 'Hapus dompet ini?', onConfirm: async () => { await supabase.from('wallets').delete().eq('id', wallet.id); setWallets(wallets.filter(w => w.id !== wallet.id)); } })} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                  <button onClick={() => setModalState({ isOpen: true, type: 'confirm', title: 'Hapus Dompet', message: 'Hapus dompet ini?', onConfirm: async () => { 
+                    const { error } = await supabase.from('wallets').delete().eq('id', wallet.id); 
+                    if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
+                    setWallets(wallets.filter(w => w.id !== wallet.id)); 
+                  } })} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
                   <div className={`p-2.5 sm:p-3 rounded-xl inline-block mb-3 sm:mb-4 shadow-sm ${wallet.color}`}><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
                   <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 pr-6 truncate">{wallet.name}</h3>
                   <p className="text-xl sm:text-2xl font-black text-gray-800 dark:text-gray-200 my-1.5 sm:my-2 tracking-tight truncate">{formatRupiah(wallet.balance)}</p>
@@ -666,7 +690,9 @@
           if (planForm.category === 'Lainnya...' && planForm.customCategory.trim() !== '') finalCategory = planForm.customCategory.trim();
 
           const newPlan = { user_id: user.id, month: planForm.month, type: finalType, category: finalCategory, amount: parsedAmount, description: planForm.description || '-', is_completed: false };
-          const { data } = await supabase.from('plans').insert([newPlan]).select();
+          const { data, error } = await supabase.from('plans').insert([newPlan]).select();
+          
+          if (error) return setModalState({ isOpen: true, type: 'alert', title: 'Gagal Menyimpan', message: error.message });
           
           if(data) setPlans([data[0], ...plans]);
           setPlanForm(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
@@ -681,12 +707,16 @@
               const actualAmount = parseInt(val.replace(/[^0-9]/g, ''), 10);
               if (isNaN(actualAmount) || actualAmount <= 0) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Error', message: 'Nominal tidak valid!' }), 300);
               
-              await supabase.from('plans').update({ is_completed: true }).eq('id', plan.id);
+              const { error: updateError } = await supabase.from('plans').update({ is_completed: true }).eq('id', plan.id);
+              if (updateError) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Update', message: updateError.message }), 300);
+
               setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, is_completed: true } : p));
               
               const newTx = { user_id: user.id, date: new Date().toISOString().split('T')[0], type: plan.type, category: plan.category, amount: actualAmount, description: `[Rencana] ${plan.description}` };
-              const { data } = await supabase.from('transactions').insert([newTx]).select();
-              if(data) setTransactions(prev => [data[0], ...prev]);
+              const { data, error: txError } = await supabase.from('transactions').insert([newTx]).select();
+              
+              if (txError) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Simpan Transaksi', message: txError.message }), 300);
+              if (data) setTransactions(prev => [data[0], ...prev]);
             }
           });
         };
@@ -695,7 +725,8 @@
           setModalState({
             isOpen: true, type: 'confirm', title: 'Hapus Rencana', message: 'Hapus rencana ini dari daftar?',
             onConfirm: async () => {
-              await supabase.from('plans').delete().eq('id', id);
+              const { error } = await supabase.from('plans').delete().eq('id', id);
+              if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
               setPlans(prev => prev.filter(p => p.id !== id));
             }
           });
@@ -787,7 +818,6 @@
         );
       };
 
-      // --- MAIN RENDER DASHBOARD ---
       return (
         <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'} transition-colors duration-300 p-3 sm:p-4 md:p-8 font-sans`}>
           <div className="max-w-7xl mx-auto space-y-5 sm:space-y-8">
