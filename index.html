@@ -900,44 +900,44 @@
                 {currentView === 'dashboard' && (
                   <>
                     {/* Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
-                      <div onClick={() => navigateTo('wallets')} className={`bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                        <div className="p-2.5 sm:p-3 bg-blue-200 dark:bg-blue-700/50 text-blue-700 dark:text-blue-300 rounded-xl group-hover:scale-110 transition-transform border border-blue-300 dark:border-blue-600"><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 xl:gap-3 2xl:gap-6">
+                      <div onClick={() => navigateTo('wallets')} className={`bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-800/60 p-4 sm:p-6 xl:p-4 2xl:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 xl:gap-2 2xl:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                        <div className="p-2.5 sm:p-3 xl:p-2 2xl:p-3 bg-blue-200 dark:bg-blue-700/50 text-blue-700 dark:text-blue-300 rounded-xl group-hover:scale-110 transition-transform border border-blue-300 dark:border-blue-600"><Wallet className="w-5 h-5 sm:w-6 sm:h-6 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-300 font-bold leading-snug">Saldo Dompet <span className="block opacity-75 font-normal mt-0.5">Semua Waktu</span></p>
-                          <h3 className="text-base sm:text-lg xl:text-xl font-black text-blue-900 dark:text-blue-100 mt-1 sm:mt-1.5 tracking-tighter truncate">{renderAmount(stats.saldoSaatIni)}</h3>
+                          <p className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-300 font-bold leading-snug whitespace-nowrap">Saldo Dompet <span className="block opacity-75 font-normal mt-0.5">Semua Waktu</span></p>
+                          <h3 className="text-[15px] sm:text-lg lg:text-xl xl:text-[15px] 2xl:text-xl font-black text-blue-900 dark:text-blue-100 mt-1 sm:mt-1.5 tracking-tighter whitespace-nowrap">{renderAmount(stats.saldoSaatIni)}</h3>
                         </div>
                       </div>
                       
-                      <div onClick={() => { setHistoryType('pemasukan'); navigateTo('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                        <div className="p-2.5 sm:p-3 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-xl border border-green-200 dark:border-green-800 group-hover:scale-110 transition-transform"><TrendingUp size={20} className="sm:w-6 sm:h-6" /></div>
+                      <div onClick={() => { setHistoryType('pemasukan'); navigateTo('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 xl:p-4 2xl:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 xl:gap-2 2xl:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                        <div className="p-2.5 sm:p-3 xl:p-2 2xl:p-3 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-xl border border-green-200 dark:border-green-800 group-hover:scale-110 transition-transform"><TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] sm:text-xs text-green-800 dark:text-green-300 font-bold leading-snug">Pemasukan <span className="block opacity-75 font-normal mt-0.5">Filter Data</span></p>
-                          <h3 className="text-base sm:text-lg xl:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tighter truncate">{renderAmount(stats.pemasukanFilter)}</h3>
+                          <p className="text-[11px] sm:text-xs text-green-800 dark:text-green-300 font-bold leading-snug whitespace-nowrap">Pemasukan <span className="block opacity-75 font-normal mt-0.5">Filter Data</span></p>
+                          <h3 className="text-[15px] sm:text-lg lg:text-xl xl:text-[15px] 2xl:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tighter whitespace-nowrap">{renderAmount(stats.pemasukanFilter)}</h3>
                         </div>
                       </div>
                       
-                      <div onClick={() => { setHistoryType('pengeluaran'); navigateTo('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                        <div className="p-2.5 sm:p-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-800 group-hover:scale-110 transition-transform"><TrendingDown size={20} className="sm:w-6 sm:h-6" /></div>
+                      <div onClick={() => { setHistoryType('pengeluaran'); navigateTo('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 xl:p-4 2xl:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 xl:gap-2 2xl:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                        <div className="p-2.5 sm:p-3 xl:p-2 2xl:p-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-800 group-hover:scale-110 transition-transform"><TrendingDown className="w-5 h-5 sm:w-6 sm:h-6 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] sm:text-xs text-red-800 dark:text-red-300 font-bold leading-snug">Pengeluaran <span className="block opacity-75 font-normal mt-0.5">Filter Data</span></p>
-                          <h3 className="text-base sm:text-lg xl:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tighter truncate">{renderAmount(stats.pengeluaranFilter)}</h3>
+                          <p className="text-[11px] sm:text-xs text-red-800 dark:text-red-300 font-bold leading-snug whitespace-nowrap">Pengeluaran <span className="block opacity-75 font-normal mt-0.5">Filter Data</span></p>
+                          <h3 className="text-[15px] sm:text-lg lg:text-xl xl:text-[15px] 2xl:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tighter whitespace-nowrap">{renderAmount(stats.pengeluaranFilter)}</h3>
                         </div>
                       </div>
                       
-                      <div onClick={() => navigateTo('savings')} className={`bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/60 dark:to-purple-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                        <div className="p-2.5 sm:p-3 bg-purple-200 dark:bg-purple-700/50 text-purple-700 dark:text-purple-300 rounded-xl group-hover:scale-110 transition-transform border border-purple-300 dark:border-purple-600"><PiggyBank size={20} className="sm:w-6 sm:h-6" /></div>
+                      <div onClick={() => navigateTo('savings')} className={`bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/60 dark:to-purple-800/60 p-4 sm:p-6 xl:p-4 2xl:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 xl:gap-2 2xl:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                        <div className="p-2.5 sm:p-3 xl:p-2 2xl:p-3 bg-purple-200 dark:bg-purple-700/50 text-purple-700 dark:text-purple-300 rounded-xl group-hover:scale-110 transition-transform border border-purple-300 dark:border-purple-600"><PiggyBank className="w-5 h-5 sm:w-6 sm:h-6 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] sm:text-xs text-purple-800 dark:text-purple-300 font-bold leading-snug">Total Tabungan <span className="block opacity-75 font-normal mt-0.5">Semua Waktu</span></p>
-                          <h3 className="text-base sm:text-lg xl:text-xl font-black text-purple-900 dark:text-purple-100 mt-1 sm:mt-1.5 tracking-tighter truncate">{renderAmount(stats.totalTabungan)}</h3>
+                          <p className="text-[11px] sm:text-xs text-purple-800 dark:text-purple-300 font-bold leading-snug whitespace-nowrap">Total Tabungan <span className="block opacity-75 font-normal mt-0.5">Semua Waktu</span></p>
+                          <h3 className="text-[15px] sm:text-lg lg:text-xl xl:text-[15px] 2xl:text-xl font-black text-purple-900 dark:text-purple-100 mt-1 sm:mt-1.5 tracking-tighter whitespace-nowrap">{renderAmount(stats.totalTabungan)}</h3>
                         </div>
                       </div>
 
-                      <div onClick={() => navigateTo('planner')} className={`bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/60 dark:to-amber-800/60 p-4 sm:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                        <div className="p-2.5 sm:p-3 bg-amber-200 dark:bg-amber-700/50 text-amber-700 dark:text-amber-300 rounded-xl group-hover:scale-110 transition-transform border border-amber-300 dark:border-amber-600"><ClipboardList size={20} className="sm:w-6 sm:h-6" /></div>
+                      <div onClick={() => navigateTo('planner')} className={`bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/60 dark:to-amber-800/60 p-4 sm:p-6 xl:p-4 2xl:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 xl:gap-2 2xl:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
+                        <div className="p-2.5 sm:p-3 xl:p-2 2xl:p-3 bg-amber-200 dark:bg-amber-700/50 text-amber-700 dark:text-amber-300 rounded-xl group-hover:scale-110 transition-transform border border-amber-300 dark:border-amber-600"><ClipboardList className="w-5 h-5 sm:w-6 sm:h-6 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300 font-bold leading-snug">Rencana Bulanan <span className="block opacity-75 font-normal mt-0.5">Bulan Ini</span></p>
-                          <h3 className="text-base sm:text-lg xl:text-xl font-black text-amber-900 dark:text-amber-100 mt-1 sm:mt-1.5 tracking-tighter truncate">{plans.filter(p => p.month === new Date().toISOString().slice(0,7) && !p.is_completed).length} Tugas</h3>
+                          <p className="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300 font-bold leading-snug whitespace-nowrap">Rencana Bulanan <span className="block opacity-75 font-normal mt-0.5">Bulan Ini</span></p>
+                          <h3 className="text-[15px] sm:text-lg lg:text-xl xl:text-[15px] 2xl:text-xl font-black text-amber-900 dark:text-amber-100 mt-1 sm:mt-1.5 tracking-tighter whitespace-nowrap">{plans.filter(p => p.month === new Date().toISOString().slice(0,7) && !p.is_completed).length} Tugas</h3>
                         </div>
                       </div>
                     </div>
