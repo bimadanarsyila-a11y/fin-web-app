@@ -5,16 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Keuangan Pribadi</title>
   
-  <!-- Tailwind CSS via CDN -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      darkMode: 'class', // Mengaktifkan mode gelap berbasis class HTML
+      darkMode: 'class',
     }
   </script>
 
   <!-- Babel untuk kompilasi JSX di Browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
 </head>
 <body class="antialiased bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
   
@@ -27,105 +30,203 @@
       PlusCircle, Download, Wallet, TrendingUp, TrendingDown, PiggyBank, 
       Trash2, Calendar, DollarSign, Sun, Moon, ArrowLeft, Target, Edit2, 
       ChevronDown, AlertCircle, Clock, CheckCircle2, CreditCard, Filter, 
-      ClipboardList, LogOut, Eye, EyeOff, HelpCircle, X
+      ClipboardList, LogOut, Eye, EyeOff, HelpCircle, X, ShieldCheck, Lock
     } from 'https://esm.sh/lucide-react@0.292.0';
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
     // ==========================================
-    // MASUKKAN KREDENSIAL SUPABASE ANDA DI SINI
+    // KREDENSIAL SUPABASE ANDA
     // ==========================================
     const SUPABASE_URL = 'https://ncwtnqmwzrnpgsvjhnwv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jd3RucW13enJucGdzdmpobnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjM4MzgsImV4cCI6MjA5MzAzOTgzOH0.tDBX2HOVcbkY4rw8yTIXAy5t_KvSjdFfU-HiDnW4mQg';
-    
-    let supabase = null;
-    let isSupabaseConfigured = false;
-    
-    try {
-      if (SUPABASE_URL.startsWith('http://') || SUPABASE_URL.startsWith('https://')) {
-        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        isSupabaseConfigured = true;
-      }
-    } catch (error) {
-      console.warn("Konfigurasi Supabase belum valid.");
-    }
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const box3D = "border-2 border-gray-900 dark:border-gray-600 shadow-[4px_4px_0_0_#111827] dark:shadow-[4px_4px_0_0_#000000] transition-all";
     const box3DHover = "hover:shadow-[6px_6px_0_0_#111827] dark:hover:shadow-[6px_6px_0_0_#000000] hover:-translate-y-0.5 transition-all";
 
-    function App() {
-      const [session, setSession] = useState(null);
-      const [isLoading, setIsLoading] = useState(true);
+    function AppWrapper() {
+      const [supabaseClient, setSupabaseClient] = useState(null);
+      const isSupabaseConfigured = SUPABASE_URL.startsWith('http://') || SUPABASE_URL.startsWith('https://');
 
       useEffect(() => {
-        if (!isSupabaseConfigured) {
-          setIsLoading(false);
+        if (!isSupabaseConfigured) return;
+
+        if (window.supabase) {
+          setSupabaseClient(window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
           return;
         }
 
-        supabase.auth.getSession().then(({ data: { session }, error }) => {
-          if (!error) setSession(session);
-          setIsLoading(false);
-        });
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-          setSession(session);
-        });
-
-        return () => subscription.unsubscribe();
-      }, []);
-
-      if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-500 font-bold">Memuat Aplikasi...</div>;
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js';
+        script.onload = () => {
+          setSupabaseClient(window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+        };
+        document.body.appendChild(script);
+      }, [isSupabaseConfigured]);
 
       if (!isSupabaseConfigured) {
         return (
-          <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
             <div className={`bg-white dark:bg-gray-800 p-8 rounded-2xl max-w-md w-full text-center ${box3D}`}>
               <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
               <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">Koneksi Database</h1>
               <p className="text-gray-500 dark:text-gray-400 font-medium mb-6">Aplikasi ini membutuhkan koneksi Supabase untuk menyimpan data.</p>
-              <div className="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-4 rounded-xl text-left border border-gray-200 dark:border-gray-600">
-                Silakan ganti variabel <br/>
-                <code className="text-indigo-600 dark:text-indigo-400 font-black">SUPABASE_URL</code> dan <code className="text-indigo-600 dark:text-indigo-400 font-black">SUPABASE_ANON_KEY</code> <br/>
-                di dalam kode <code className="bg-gray-200 dark:bg-gray-600 px-1 rounded">index.html</code> dengan kunci API dari dasbor Supabase Anda.
-              </div>
             </div>
           </div>
         );
       }
 
-      if (!session) {
+      if (!supabaseClient) {
         return (
-          <div className="min-h-screen flex items-center justify-center p-4">
-            <div className={`bg-white dark:bg-gray-800 p-8 rounded-2xl max-w-md w-full text-center ${box3D}`}>
-              <div className="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Wallet size={32} />
-              </div>
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">KeuanganKu</h1>
-              <p className="text-gray-500 dark:text-gray-400 font-medium mb-8">Pantau keuangan dengan mudah, sinkron di semua perangkat Anda.</p>
-              <button 
-                onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
-                className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-white border-2 border-gray-300 dark:border-gray-600 py-3.5 px-4 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors shadow-[2px_2px_0_0_#111827] dark:shadow-[2px_2px_0_0_#ffffff] active:translate-y-[2px] active:shadow-none"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Lanjutkan dengan Google
+          <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+            <div className="text-indigo-600 dark:text-indigo-400 font-bold animate-pulse text-lg">Menghubungkan ke Supabase...</div>
+          </div>
+        );
+      }
+
+      return <MainApp supabase={supabaseClient} />;
+    }
+
+    function MainApp({ supabase }) {
+      const [session, setSession] = useState(null);
+      const [authStatus, setAuthStatus] = useState('checking'); 
+
+      useEffect(() => {
+        let isMounted = true;
+
+        const handleAuthChange = async (sessionUser) => {
+          if (!sessionUser || !sessionUser.email) {
+            if (isMounted) {
+              setSession(null);
+              setAuthStatus('unauthenticated');
+            }
+            return;
+          }
+
+          try {
+            console.log("Sistem mengecek validasi email pembeli:", sessionUser.email);
+            
+            // Query ekstra ketat: Email di database harus persis sama dengan email login
+            const { data: whitelistData, error } = await supabase
+              .from('allowed_users')
+              .select('email')
+              .eq('email', sessionUser.email); 
+            
+            if (!isMounted) return;
+
+            if (error) {
+              console.error("Database menolak koneksi/error:", error.message);
+              setSession(sessionUser);
+              setAuthStatus('unauthorized');
+              return;
+            }
+            
+            // Validasi penentu: Harus ada minimal 1 data email yang cocok
+            if (whitelistData && whitelistData.length > 0) {
+              console.log("Akses Diizinkan!");
+              setSession(sessionUser);
+              setAuthStatus('authenticated');
+            } else {
+              console.log("Akses Diblokir! Email belum membeli produk.");
+              setSession(sessionUser); 
+              setAuthStatus('unauthorized');
+            }
+          } catch (error) {
+            console.error("Sistem gagal memverifikasi.", error);
+            if (isMounted) {
+              setSession(sessionUser);
+              setAuthStatus('unauthorized');
+            }
+          }
+        };
+
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          handleAuthChange(session?.user);
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          handleAuthChange(session?.user);
+        });
+
+        return () => {
+          isMounted = false;
+          subscription.unsubscribe();
+        };
+      }, [supabase]);
+
+      const handleLogin = async () => {
+        setAuthStatus('checking');
+        try {
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { 
+              redirectTo: window.location.origin,
+              queryParams: { prompt: 'select_account' } // Memaksa pengguna memilih akun Google jika punya banyak akun
+            }
+          });
+          if (error) throw error;
+        } catch (error) { 
+          setAuthStatus('unauthenticated'); 
+        }
+      };
+
+      const handleLogout = async () => {
+        await supabase.auth.signOut();
+        setSession(null);
+        setAuthStatus('unauthenticated');
+      };
+
+      const LoginScreen = () => (
+        <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
+          <div className={`bg-white dark:bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center ${box3D}`}>
+            <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6"><ShieldCheck size={40} className="text-indigo-600 dark:text-indigo-400" /></div>
+            <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">Dashboard Keuangan</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 font-medium">Sistem manajemen finansial profesional & eksklusif.</p>
+            <button onClick={handleLogin} className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 border-2 border-gray-900 dark:border-gray-500 py-3.5 rounded-xl font-bold shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_#000] active:translate-y-1 active:shadow-none transition-all dark:text-white">
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Masuk dengan Akun Terdaftar
+            </button>
+            <p className="mt-6 text-xs text-gray-400 font-medium italic">Proteksi Keamanan Aktif v2.0</p>
+          </div>
+        </div>
+      );
+
+      const UnauthorizedScreen = () => (
+        <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
+          <div className={`bg-white dark:bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center ${box3D}`}>
+            <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6"><Lock size={40} className="text-red-600 dark:text-red-400" /></div>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Akses Ditolak</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 font-medium italic border-b-2 border-gray-100 dark:border-gray-700 pb-4">{session?.email}</p>
+            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border-2 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-400 font-bold text-sm mb-6 leading-relaxed">
+              Sistem mendeteksi bahwa email Anda belum terdaftar sebagai pengguna resmi produk ini. Silakan beli akses untuk mulai menggunakan aplikasi.
+            </div>
+            <div className="flex flex-col gap-3">
+              <a href="https://lynk.id/" target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center bg-indigo-600 text-white py-3.5 rounded-xl font-bold hover:bg-indigo-700 transition-colors border-2 border-indigo-900 shadow-[2px_2px_0_0_#312e81] active:shadow-none active:translate-y-[2px]">
+                Beli Akses Sekarang
+              </a>
+              <button onClick={handleLogout} className="w-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 py-3 rounded-xl font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                Ganti Akun Lain
               </button>
             </div>
           </div>
-        );
-      }
+        </div>
+      );
 
-      return <Dashboard user={session.user} onLogout={() => supabase.auth.signOut()} />;
+      if (authStatus === 'checking') return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900"><div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div></div>;
+      if (authStatus === 'unauthenticated') return <LoginScreen />;
+      if (authStatus === 'unauthorized') return <UnauthorizedScreen />;
+
+      return <Dashboard user={session} onLogout={handleLogout} supabase={supabase} />;
     }
 
-    function Dashboard({ user, onLogout }) {
+    function Dashboard({ user, onLogout, supabase }) {
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem('finance_theme') === 'dark');
       const [showBalance, setShowBalance] = useState(() => localStorage.getItem('finance_show_balance') !== 'false');
-      const [showTutorial, setShowTutorial] = useState(false);
       const [currentView, setCurrentView] = useState('dashboard');
       const [isFetchingData, setIsFetchingData] = useState(true);
 
@@ -142,41 +243,27 @@
         'Tabungan': ['Dana Darurat', 'Investasi', 'Tabungan Liburan']
       };
 
-      // URL Hash Routing (Back button & Refresh support)
-      useEffect(() => {
-        const handleHashChange = () => {
-          const hash = window.location.hash.replace('#', '');
-          if (['dashboard', 'savings', 'wallets', 'history', 'planner'].includes(hash)) {
-            setCurrentView(hash);
-          } else {
-            setCurrentView('dashboard');
-          }
-        };
-        handleHashChange();
-        window.addEventListener('hashchange', handleHashChange);
-        return () => window.removeEventListener('hashchange', handleHashChange);
-      }, []);
-
       const navigateTo = (view) => {
-        window.location.hash = view;
+        setCurrentView(view);
       };
 
       useEffect(() => {
         const loadData = async () => {
           setIsFetchingData(true);
           try {
-            const [txRes, walletRes, goalsRes, plansRes, catRes] = await Promise.all([
-              supabase.from('transactions').select('*').order('date', { ascending: false }),
-              supabase.from('wallets').select('*'),
-              supabase.from('goals').select('*'),
-              supabase.from('plans').select('*').order('month', { ascending: false }),
-              supabase.from('categories').select('*')
-            ]);
-            if (txRes.data) setTransactions(txRes.data);
-            if (walletRes.data) setWallets(walletRes.data);
-            if (goalsRes.data) setGoals(goalsRes.data);
-            if (plansRes.data) setPlans(plansRes.data);
-            if (catRes.data) setCustomCategories(catRes.data);
+            const { data, error } = await supabase
+              .from('user_data')
+              .select('*')
+              .eq('user_id', user.id)
+              .single();
+
+            if (data && !error) {
+              if (data.transactions) setTransactions(data.transactions);
+              if (data.wallets) setWallets(data.wallets);
+              if (data.goals) setGoals(data.goals);
+              if (data.plans) setPlans(data.plans);
+              if (data.category_map) setCustomCategories(data.category_map);
+            }
           } catch (error) {
             console.error("Error fetching data:", error);
           } finally {
@@ -184,14 +271,55 @@
           }
         };
         loadData();
-      }, []);
+
+        const channel = supabase.channel('user_data_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'user_data', filter: `user_id=eq.${user.id}` }, (payload) => {
+            const newData = payload.new;
+            if (newData) {
+              if (newData.transactions) setTransactions(newData.transactions);
+              if (newData.wallets) setWallets(newData.wallets);
+              if (newData.goals) setGoals(newData.goals);
+              if (newData.plans) setPlans(newData.plans);
+              if (newData.category_map) setCustomCategories(newData.category_map);
+            }
+          })
+          .subscribe();
+
+        return () => supabase.removeChannel(channel);
+      }, [supabase, user.id]);
+
+      useEffect(() => {
+        if (isFetchingData) return; 
+        
+        const saveData = async () => {
+          try {
+            await supabase.from('user_data').upsert({ 
+              user_id: user.id, 
+              transactions, 
+              goals, 
+              plans, 
+              wallets, 
+              category_map: customCategories,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+          } catch (err) {
+            console.error("Gagal auto-save", err);
+          }
+        };
+        
+        const timeout = setTimeout(saveData, 1500);
+        return () => clearTimeout(timeout);
+      }, [transactions, goals, plans, wallets, customCategories, user.id, supabase, isFetchingData]);
+
 
       const categoryMap = useMemo(() => {
         const map = { ...initialCategoryMap };
-        customCategories.forEach(c => {
-          if (!map[c.type]) map[c.type] = [];
-          if (!map[c.type].includes(c.name)) map[c.type].push(c.name);
-        });
+        if(Array.isArray(customCategories)) {
+          customCategories.forEach(c => {
+            if (!map[c.type]) map[c.type] = [];
+            if (!map[c.type].includes(c.name)) map[c.type].push(c.name);
+          });
+        }
         return map;
       }, [customCategories]);
 
@@ -265,12 +393,7 @@
         setModalState({
           isOpen: true, type: 'confirm', title: 'Hapus Kategori', message: `Hapus kategori kustom "${categoryToDelete}"? (Kategori default tidak bisa dihapus)`,
           onConfirm: async () => {
-            const targetCat = customCategories.find(c => c.type === type && c.name === categoryToDelete);
-            if (targetCat) {
-              const { error } = await supabase.from('categories').delete().eq('id', targetCat.id);
-              if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
-              setCustomCategories(prev => prev.filter(c => c.id !== targetCat.id));
-            }
+            setCustomCategories(prev => prev.filter(c => !(c.type === type && c.name === categoryToDelete)));
             if(formData.category === categoryToDelete) setFormData(prev => ({ ...prev, category: 'Lainnya...' }));
           }
         });
@@ -319,7 +442,7 @@
 
       const sumOfWallets = wallets.reduce((acc, w) => acc + w.balance, 0);
 
-      // --- SUPABASE CRUD TRANSACTIONS ---
+      // --- CRUD TRANSACTIONS ---
       const handleSubmitTransaction = async (e) => {
         e.preventDefault();
         const parsedAmount = parseInt(formData.amount.replace(/[^0-9]/g, ''), 10);
@@ -332,26 +455,17 @@
         }
         if (formData.category === 'Lainnya...' && formData.customCategory.trim() !== '') {
           finalCategory = formData.customCategory.trim();
-          // Simpan ke DB Categories jika baru
           if (!categoryMap[finalType]?.includes(finalCategory)) {
-            const { data, error } = await supabase.from('categories').insert([{ user_id: user.id, type: finalType, name: finalCategory }]).select();
-            if (error) return setModalState({ isOpen: true, type: 'alert', title: 'Gagal Simpan Kategori', message: error.message });
-            if (data) setCustomCategories([...customCategories, ...data]);
+            setCustomCategories([...customCategories, { type: finalType, name: finalCategory }]);
           }
         }
 
         const newTx = {
-          user_id: user.id, date: formData.date, type: finalType, category: finalCategory,
+          id: Date.now().toString(), date: formData.date, type: finalType, category: finalCategory,
           amount: parsedAmount, description: formData.description || '-'
         };
 
-        const { data, error } = await supabase.from('transactions').insert([newTx]).select();
-        if (error) {
-          setModalState({ isOpen: true, type: 'alert', title: 'Gagal Menyimpan', message: error.message });
-          return;
-        }
-
-        if (data) setTransactions([data[0], ...transactions]);
+        setTransactions([newTx, ...transactions]);
         setFormData(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
       };
 
@@ -359,8 +473,6 @@
         setModalState({
           isOpen: true, type: 'confirm', title: 'Hapus Transaksi', message: 'Hapus transaksi ini permanen?',
           onConfirm: async () => {
-            const { error } = await supabase.from('transactions').delete().eq('id', id);
-            if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
             setTransactions(prev => prev.filter(t => t.id !== id));
           }
         });
@@ -370,29 +482,21 @@
         setModalState({
           isOpen: true, type: 'confirm', title: 'Hapus Multi Transaksi', message: `Hapus ${selectedIds.size} transaksi terpilih secara permanen?`,
           onConfirm: async () => {
-            const idsArray = Array.from(selectedIds);
-            const { error } = await supabase.from('transactions').delete().in('id', idsArray);
-            if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
-            
             setTransactions(prev => prev.filter(t => !selectedIds.has(t.id)));
             setSelectedIds(new Set()); setIsSelectMode(false);
           }
         });
       };
 
-      // --- SUPABASE CRUD SAVINGS ---
+      // --- CRUD SAVINGS ---
       const renderSavingsView = () => {
         const handleGoalSubmit = async (e) => {
           e.preventDefault();
           const target = parseInt(goalForm.target.replace(/[^0-9]/g, ''), 10);
           if (!goalForm.name || isNaN(target) || target <= 0) return;
           
-          const newGoal = { user_id: user.id, name: goalForm.name, target, saved: 0, date: goalForm.date || null, urgency: goalForm.urgency };
-          const { data, error } = await supabase.from('goals').insert([newGoal]).select();
-          
-          if (error) return setModalState({ isOpen: true, type: 'alert', title: 'Gagal Menyimpan', message: error.message });
-          
-          if (data) setGoals([...goals, data[0]]);
+          const newGoal = { id: Date.now().toString(), name: goalForm.name, target, saved: 0, date: goalForm.date || null, urgency: goalForm.urgency };
+          setGoals([...goals, newGoal]);
           setShowGoalForm(false); setGoalForm({ name: '', target: '', date: '', urgency: 'sedang' });
         };
 
@@ -407,9 +511,6 @@
               if (isNegative) amount = -amount;
               
               const newSaved = Math.max(0, currentSaved + amount);
-              const { error } = await supabase.from('goals').update({ saved: newSaved }).eq('id', id);
-              if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Update', message: error.message }), 300);
-
               setGoals(goals.map(g => g.id === id ? { ...g, saved: newSaved } : g));
             }
           });
@@ -419,8 +520,6 @@
           setModalState({
             isOpen: true, type: 'confirm', title: 'Hapus Target', message: 'Hapus target tabungan ini?', 
             onConfirm: async () => {
-              const { error } = await supabase.from('goals').delete().eq('id', id);
-              if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
               setGoals(goals.filter(g => g.id !== id));
             }
           });
@@ -484,29 +583,27 @@
 
       const renderWalletsView = () => {
         const WalletColors = [
-          { id: 'bca', class: 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700' }, 
-          { id: 'mandiri', class: 'bg-yellow-100 text-yellow-700 border border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700' }, 
-          { id: 'gopay', class: 'bg-sky-100 text-sky-700 border border-sky-300 dark:bg-sky-900/50 dark:text-sky-300 dark:border-sky-700' }, 
-          { id: 'ovo', class: 'bg-purple-100 text-purple-700 border border-purple-300 dark:bg-purple-900/50 dark:text-purple-300 dark:border-purple-700' }, 
-          { id: 'dana', class: 'bg-indigo-100 text-indigo-700 border border-indigo-300 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-700' }, 
-          { id: 'linkaja', class: 'bg-red-100 text-red-700 border border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700' }, 
-          { id: 'shopee', class: 'bg-orange-100 text-orange-700 border border-orange-300 dark:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700' }, 
-          { id: 'jago', class: 'bg-orange-50 text-orange-600 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' }, 
-          { id: 'bri', class: 'bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800' }, 
-          { id: 'bni', class: 'bg-teal-100 text-teal-800 border border-teal-300 dark:bg-teal-900/50 dark:text-teal-300 dark:border-teal-700' }, 
-          { id: 'cash', class: 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700' }, 
-          { id: 'gray', class: 'bg-gray-100 text-gray-700 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600' }, 
-          { id: 'pink', class: 'bg-pink-100 text-pink-700 border border-pink-300 dark:bg-pink-900/50 dark:text-pink-300 dark:border-pink-700' },
-          { id: 'rose', class: 'bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-900/50 dark:text-rose-300 dark:border-rose-700' }
+          { id: 'bca', class: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700' }, 
+          { id: 'mandiri', class: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700' }, 
+          { id: 'gopay', class: 'bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-900/50 dark:text-sky-300 dark:border-sky-700' }, 
+          { id: 'ovo', class: 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/50 dark:text-purple-300 dark:border-purple-700' }, 
+          { id: 'dana', class: 'bg-indigo-100 text-indigo-700 border-indigo-300 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-700' }, 
+          { id: 'linkaja', class: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700' }, 
+          { id: 'shopee', class: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700' }, 
+          { id: 'jago', class: 'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' }, 
+          { id: 'bri', class: 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800' }, 
+          { id: 'bni', class: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/50 dark:text-teal-300 dark:border-teal-700' }, 
+          { id: 'cash', class: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700' }, 
+          { id: 'gray', class: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600' }, 
+          { id: 'pink', class: 'bg-pink-100 text-pink-700 border-pink-300 dark:bg-pink-900/50 dark:text-pink-300 dark:border-pink-700' },
+          { id: 'rose', class: 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900/50 dark:text-rose-300 dark:border-rose-700' }
         ];
 
         const submitWallet = async (e) => {
           e.preventDefault(); if (!walletForm.name) return;
-          const newWallet = { user_id: user.id, name: walletForm.name, balance: 0, color: walletForm.color };
-          const { data, error } = await supabase.from('wallets').insert([newWallet]).select();
-          if (error) return setModalState({ isOpen: true, type: 'alert', title: 'Gagal Menyimpan', message: error.message });
+          const newWallet = { id: Date.now().toString(), name: walletForm.name, balance: 0, color: walletForm.color };
           
-          if(data) setWallets([...wallets, data[0]]);
+          setWallets([...wallets, newWallet]);
           setShowWalletForm(false); setWalletForm({ name: '', color: WalletColors[0].class });
         };
 
@@ -517,9 +614,6 @@
             onConfirm: async (val) => {
               const balance = parseInt(val.replace(/[^0-9]/g, ''), 10);
               if (!isNaN(balance)) {
-                const { error } = await supabase.from('wallets').update({ balance }).eq('id', id);
-                if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Update', message: error.message }), 300);
-                
                 setWallets(wallets.map(w => w.id === id ? { ...w, balance } : w));
               } else setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Error', message: 'Nominal tidak valid!' }), 300);
             }
@@ -575,8 +669,6 @@
               {wallets.map(wallet => (
                 <div key={wallet.id} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl relative ${box3D}`}>
                   <button onClick={() => setModalState({ isOpen: true, type: 'confirm', title: 'Hapus Dompet', message: 'Hapus dompet ini?', onConfirm: async () => { 
-                    const { error } = await supabase.from('wallets').delete().eq('id', wallet.id); 
-                    if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
                     setWallets(wallets.filter(w => w.id !== wallet.id)); 
                   } })} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
                   <div className={`p-2.5 sm:p-3 rounded-xl inline-block mb-3 sm:mb-4 shadow-sm ${wallet.color}`}><Wallet size={20} className="sm:w-6 sm:h-6" /></div>
@@ -675,7 +767,7 @@
                           <td className="p-3 sm:p-4 text-gray-700 dark:text-gray-300 font-medium whitespace-nowrap">{t.date}</td>
                           <td className="p-3 sm:p-4 text-gray-900 dark:text-gray-100 font-bold">{t.category}</td>
                           <td className="p-3 sm:p-4 text-gray-600 dark:text-gray-400 font-medium max-w-[150px] sm:max-w-none truncate sm:whitespace-normal">{t.description}</td>
-                          <td className={`p-3 sm:p-4 text-right font-black tracking-tight text-sm sm:text-base whitespace-nowrap ${isIncomeView ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{isIncomeView ? '+' : '-'}{formatRupiah(t.amount)}</td>
+                          <td className={`p-3 sm:p-4 text-right font-black tracking-tight text-sm sm:text-base whitespace-nowrap ${isIncomeView ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{isIncomeView ? '+' : '-'}{renderAmount(t.amount)}</td>
                           <td className="p-3 sm:p-4 text-center">
                             <button onClick={() => deleteTransactionItem(t.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-1.5 sm:p-2 rounded-lg transition-all" title="Hapus"><Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                           </td>
@@ -703,12 +795,9 @@
           if (planForm.type === 'Lainnya...' && planForm.customType.trim() !== '') finalType = planForm.customType.trim();
           if (planForm.category === 'Lainnya...' && planForm.customCategory.trim() !== '') finalCategory = planForm.customCategory.trim();
 
-          const newPlan = { user_id: user.id, month: planForm.month, type: finalType, category: finalCategory, amount: parsedAmount, description: planForm.description || '-', is_completed: false };
-          const { data, error } = await supabase.from('plans').insert([newPlan]).select();
+          const newPlan = { id: Date.now().toString(), month: planForm.month, type: finalType, category: finalCategory, amount: parsedAmount, description: planForm.description || '-', is_completed: false };
           
-          if (error) return setModalState({ isOpen: true, type: 'alert', title: 'Gagal Menyimpan', message: error.message });
-          
-          if(data) setPlans([data[0], ...plans]);
+          setPlans([newPlan, ...plans]);
           setPlanForm(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
         };
 
@@ -721,16 +810,10 @@
               const actualAmount = parseInt(val.replace(/[^0-9]/g, ''), 10);
               if (isNaN(actualAmount) || actualAmount <= 0) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Error', message: 'Nominal tidak valid!' }), 300);
               
-              const { error: updateError } = await supabase.from('plans').update({ is_completed: true }).eq('id', plan.id);
-              if (updateError) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Update', message: updateError.message }), 300);
-
               setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, is_completed: true } : p));
               
-              const newTx = { user_id: user.id, date: new Date().toISOString().split('T')[0], type: plan.type, category: plan.category, amount: actualAmount, description: `[Rencana] ${plan.description}` };
-              const { data, error: txError } = await supabase.from('transactions').insert([newTx]).select();
-              
-              if (txError) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Simpan Transaksi', message: txError.message }), 300);
-              if (data) setTransactions(prev => [data[0], ...prev]);
+              const newTx = { id: Date.now().toString(), date: new Date().toISOString().split('T')[0], type: plan.type, category: plan.category, amount: actualAmount, description: `[Rencana] ${plan.description}` };
+              setTransactions(prev => [newTx, ...prev]);
             }
           });
         };
@@ -739,8 +822,6 @@
           setModalState({
             isOpen: true, type: 'confirm', title: 'Hapus Rencana', message: 'Hapus rencana ini dari daftar?',
             onConfirm: async () => {
-              const { error } = await supabase.from('plans').delete().eq('id', id);
-              if (error) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Gagal Dihapus', message: error.message }), 300);
               setPlans(prev => prev.filter(p => p.id !== id));
             }
           });
@@ -793,41 +874,39 @@
                     <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Keterangan Tambahan</label>
                     <input type="text" value={planForm.description} onChange={e => setPlanForm({...planForm, description: e.target.value})} placeholder="Cth: Anggaran Belanja..." className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none" />
                   </div>
-                  <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 sm:py-3.5 px-4 rounded-xl transition-all mt-4 border-2 border-amber-900 shadow-[2px_2px_0_0_#78350f] active:shadow-none active:translate-y-[2px]">Simpan ke Rencana</button>
+                  <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-black mt-4 shadow-[2px_2px_0_0_#78350f] active:shadow-none active:translate-y-[2px] transition-all">Simpan ke Rencana</button>
                 </form>
               </div>
 
-              <div className={`lg:col-span-8 bg-white dark:bg-gray-800 rounded-2xl flex flex-col h-[500px] lg:h-auto overflow-hidden ${box3D}`}>
-                <div className="p-4 sm:p-6 border-b-2 border-gray-200 dark:border-gray-700 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 gap-3 sm:gap-0">
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white">Daftar Rencana Bulan {planForm.month}</h2>
-                    <p className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">Total Dianggarkan: {renderAmount(totalPlannedAmount)}</p>
-                  </div>
+              <div className={`lg:col-span-8 bg-white dark:bg-gray-800 rounded-2xl flex flex-col lg:h-[680px] overflow-hidden ${box3D}`}>
+                <div className="p-6 border-b-2 border-gray-200 dark:border-gray-700 shrink-0">
+                   <h3 className="font-black text-xl text-gray-900 dark:text-white">Daftar Rencana {planForm.month}</h3>
+                   <p className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">Total Dianggarkan: {renderAmount(totalPlannedAmount)}</p>
                 </div>
-                <div className="flex-1 overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
-                  <table className="w-full text-left border-collapse min-w-[700px]">
-                    <thead className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs sm:text-sm sticky top-0 z-10 shadow-sm border-b-2 border-gray-200 dark:border-gray-700">
-                      <tr><th className="p-3 font-bold w-12 text-center">Status</th><th className="p-3 font-bold">Tipe & Kategori</th><th className="p-3 font-bold">Keterangan</th><th className="p-3 font-bold text-right">Nominal</th><th className="p-3 font-bold text-center">Aksi</th></tr>
-                    </thead>
-                    <tbody className="text-xs sm:text-sm">
-                      {currentMonthPlans.length === 0 ? (
-                        <tr><td colSpan="5" className="text-center text-gray-500 py-12 bg-white dark:bg-gray-800 h-full"><ClipboardList size={40} className="mx-auto mb-3 opacity-20" /><p className="font-bold">Tidak ada rencana tercatat.</p></td></tr>
-                      ) : (
-                        currentMonthPlans.map((p) => (
-                          <tr key={p.id} className={`border-b border-gray-200 dark:border-gray-700 transition-colors ${p.is_completed ? 'bg-gray-100 dark:bg-gray-800/50 opacity-60' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
-                            <td className="p-3 text-center">{p.is_completed ? <CheckCircle2 size={20} className="text-green-500 mx-auto" /> : <Clock size={20} className="text-amber-500 mx-auto" />}</td>
-                            <td className="p-3"><p className="font-bold text-gray-900 dark:text-gray-100 truncate">{p.category}</p><p className="text-[10px] sm:text-xs font-bold text-gray-500 mt-0.5">{p.type.toUpperCase()}</p></td>
-                            <td className="p-3 text-gray-600 dark:text-gray-400 font-medium truncate">{p.description}</td>
-                            <td className="p-3 text-right font-black tracking-tight text-sm sm:text-base text-gray-800 dark:text-gray-200">{formatRupiah(p.amount)}</td>
-                            <td className="p-3 text-center flex justify-center gap-2">
-                              {!p.is_completed && <button onClick={() => executePlan(p)} className="flex items-center gap-1 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/50 dark:text-green-300 px-2.5 py-1.5 rounded-lg font-bold transition-colors"><CheckCircle2 size={14} /> Eksekusi</button>}
-                              <button onClick={() => deletePlan(p.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-1.5 rounded-lg transition-all" title="Hapus"><Trash2 size={16} /></button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                <div className="flex-1 overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-gray-900/50 p-4 sm:p-6">
+                   <div className="space-y-4 min-w-[500px]">
+                     {monthPlans.map(p => (
+                       <div key={p.id} className={`flex justify-between items-center p-5 border-2 rounded-xl transition-all ${p.is_completed ? 'opacity-50 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 grayscale' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md'}`}>
+                          <div className="flex items-start gap-4">
+                            <div className="mt-1">{p.is_completed ? <CheckCircle2 size={24} className="text-green-500" /> : <Clock size={24} className="text-amber-500" />}</div>
+                            <div>
+                              <p className="font-black text-lg text-gray-900 dark:text-white">{p.category} <span className="text-gray-400 font-medium text-sm mx-1">({p.type})</span></p>
+                              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-0.5">{p.description}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <span className="font-black text-lg tracking-tight text-gray-800 dark:text-gray-200">{renderAmount(p.amount)}</span>
+                            <div className="flex gap-2">
+                              {!p.is_completed && (
+                                <button onClick={() => executePlan(p)} className="flex items-center gap-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 px-3 py-2 rounded-lg font-bold transition-colors"><CheckCircle2 size={16}/> Eksekusi</button>
+                              )}
+                              <button onClick={() => deletePlan(p.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-2 rounded-lg transition-colors"><Trash2 size={18}/></button>
+                            </div>
+                          </div>
+                       </div>
+                     ))}
+                     {monthPlans.length === 0 && <div className="text-center py-16"><ClipboardList size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" /><p className="font-bold text-gray-500 dark:text-gray-400">Belum ada rencana bulan ini.</p></div>}
+                   </div>
                 </div>
               </div>
             </div>
@@ -839,242 +918,282 @@
         <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'} transition-colors duration-300 p-3 sm:p-4 md:p-8 font-sans`}>
           <div className="max-w-7xl mx-auto space-y-5 sm:space-y-8">
             
-            {/* HEADER */}
+            {/* HEADER APLIKASI */}
             <div className={`flex flex-col md:flex-row justify-between items-start md:items-center bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl gap-4 ${box3D}`}>
-              <div className="w-full flex justify-between items-center">
+              <div className="w-full flex justify-between items-center md:block">
                 <div>
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3 tracking-tight">
-                    Dashboard Keuangan
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2 sm:gap-3">
+                    <ShieldCheck className="text-indigo-600 dark:text-indigo-400" /> Dashboard Keuangan
                   </h1>
-                  <p className="text-gray-600 dark:text-gray-400 font-medium mt-1 text-xs sm:text-sm">Pantau keuangan dengan mudah & modern</p>
+                  <p className="text-gray-600 dark:text-gray-400 font-bold mt-1.5 text-xs sm:text-sm flex items-center gap-2">
+                    <span className="truncate max-w-[150px] sm:max-w-none">{user?.email}</span> 
+                    <span className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-2 py-0.5 rounded text-[10px] sm:text-xs">PRO Member</span>
+                  </p>
                 </div>
-                
-                {/* Header Actions (Mata, Darkmode, Profile) */}
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <button onClick={() => setShowTutorial(true)} className="p-2 sm:p-2.5 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Buku Panduan">
-                      <HelpCircle size={20} />
+                <div className="flex gap-2">
+                  <button onClick={() => setDarkMode(!darkMode)} className="p-2 sm:p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors">
+                    {darkMode ? <Sun size={20}/> : <Moon size={20}/>}
                   </button>
-                  <button onClick={() => setShowBalance(!showBalance)} className="p-2 sm:p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors" title="Sembunyikan Saldo">
-                      {showBalance ? <Eye size={20} /> : <EyeOff size={20} />}
+                  <button onClick={() => setModalState({ isOpen: true, type: 'confirm', title: 'Logout', message: 'Yakin ingin keluar dari akun?', onConfirm: onLogout })} className="p-2 sm:p-2.5 rounded-full bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-500 transition-colors">
+                    <LogOut size={20}/>
                   </button>
-                  <button onClick={() => setDarkMode(!darkMode)} className="p-2 sm:p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">
-                      {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                  </button>
-                  
-                  {/* Avatar Profile */}
-                  <div className="relative group cursor-pointer ml-1 sm:ml-2">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-700 shadow-sm">
-                        {user?.email?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    {/* Dropdown Menu Profile */}
-                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-[4px_4px_0_0_#111827] dark:shadow-[4px_4px_0_0_#000000] border-2 border-gray-900 dark:border-gray-600 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
-                        <div className="p-3 border-b-2 border-gray-100 dark:border-gray-700 text-xs font-bold text-gray-500 dark:text-gray-400 truncate" title={user?.email}>{user?.email}</div>
-                        <button onClick={onLogout} className="w-full text-left px-4 py-3 text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors"><LogOut size={16} /> Keluar Aplikasi</button>
-                    </div>
-                  </div>
                 </div>
               </div>
 
               {currentView === 'dashboard' && (
                 <div className="flex flex-col sm:flex-row w-full md:w-auto items-stretch sm:items-center gap-2 sm:gap-3 bg-gray-100 dark:bg-gray-900 p-2 sm:p-2.5 rounded-xl border-2 border-gray-200 dark:border-gray-700 mt-2 md:mt-0">
-                  <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 pl-1 sm:pl-2">Filter:</span>
+                  <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 pl-1 sm:pl-2">Filter Data:</span>
                   <div className="flex gap-2 w-full sm:w-auto">
                     <select 
                       value={globalFilterType} onChange={(e) => setGlobalFilterType(e.target.value)}
-                      className="bg-white dark:bg-gray-800 font-semibold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none focus:border-indigo-500 w-full sm:w-auto flex-1"
+                      className="bg-white dark:bg-gray-800 font-bold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none focus:border-indigo-500 w-full sm:w-auto flex-1 cursor-pointer"
                     >
                       <option value="month">Bulanan</option><option value="date">Harian</option><option value="all">Semua Waktu</option>
                     </select>
-                    {globalFilterType === 'month' && <input type="month" value={globalFilterValue} onChange={(e) => setGlobalFilterValue(e.target.value)} className="bg-white dark:bg-gray-800 font-semibold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none w-full sm:w-auto flex-1" />}
-                    {globalFilterType === 'date' && <input type="date" value={globalFilterValue} onChange={(e) => setGlobalFilterValue(e.target.value)} className="bg-white dark:bg-gray-800 font-semibold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none w-full sm:w-auto flex-1" />}
+                    {globalFilterType === 'month' && <input type="month" value={globalFilterValue} onChange={(e) => setGlobalFilterValue(e.target.value)} className="bg-white dark:bg-gray-800 font-bold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none w-full sm:w-auto flex-1 cursor-pointer" />}
+                    {globalFilterType === 'date' && <input type="date" value={globalFilterValue} onChange={(e) => setGlobalFilterValue(e.target.value)} className="bg-white dark:bg-gray-800 font-bold text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm outline-none w-full sm:w-auto flex-1 cursor-pointer" />}
                   </div>
                 </div>
               )}
             </div>
 
-            {isFetchingData ? (
-              <div className="py-20 text-center text-gray-500 font-bold animate-pulse">Mengambil data dari awan...</div>
-            ) : (
+            {/* --- NAVIGASI VIEW DINAMIS --- */}
+            {currentView === 'savings' && renderSavingsView()}
+            {currentView === 'wallets' && renderWalletsView()}
+            {currentView === 'history' && renderHistoryView()}
+            {currentView === 'planner' && renderPlannerView()}
+
+            {currentView === 'dashboard' && (
               <>
-                {currentView === 'savings' && renderSavingsView()}
-                {currentView === 'wallets' && renderWalletsView()}
-                {currentView === 'history' && renderHistoryView()}
-                {currentView === 'planner' && renderPlannerView()}
+                {/* KARTU DASHBOARD UTAMA */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+                  <div onClick={() => setCurrentView('wallets')} className={`bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-800/60 p-4 sm:p-6 rounded-2xl flex flex-col justify-center cursor-pointer group ${box3D} ${box3DHover}`}>
+                    <Wallet className="mb-3 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" size={28} />
+                    <p className="text-xs sm:text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">Saldo Dompet (All)</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-blue-900 dark:text-blue-100 tracking-tight truncate">{formatRupiah(stats.saldoSaatIni)}</h3>
+                  </div>
+                  
+                  <div onClick={() => { setHistoryType('pemasukan'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col justify-center cursor-pointer group ${box3D} ${box3DHover}`}>
+                    <TrendingUp className="mb-3 text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform" size={28} />
+                    <p className="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400 mb-1">Pemasukan (Filter)</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight truncate">{formatRupiah(stats.pemasukanFilter)}</h3>
+                  </div>
+                  
+                  <div onClick={() => { setHistoryType('pengeluaran'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col justify-center cursor-pointer group ${box3D} ${box3DHover}`}>
+                    <TrendingDown className="mb-3 text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform" size={28} />
+                    <p className="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400 mb-1">Pengeluaran (Filter)</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight truncate">{formatRupiah(stats.pengeluaranFilter)}</h3>
+                  </div>
+                  
+                  <div onClick={() => setCurrentView('savings')} className={`bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/60 dark:to-purple-800/60 p-4 sm:p-6 rounded-2xl flex flex-col justify-center cursor-pointer group ${box3D} ${box3DHover}`}>
+                    <PiggyBank className="mb-3 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform" size={28} />
+                    <p className="text-xs sm:text-sm font-bold text-purple-800 dark:text-purple-300 mb-1">Total Tabungan (All)</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-purple-900 dark:text-purple-100 tracking-tight truncate">{formatRupiah(stats.totalTabungan)}</h3>
+                  </div>
+                  
+                  <div onClick={() => setCurrentView('planner')} className={`bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/60 dark:to-amber-800/60 p-4 sm:p-6 rounded-2xl flex flex-col justify-center cursor-pointer group ${box3D} ${box3DHover}`}>
+                    <ClipboardList className="mb-3 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" size={28} />
+                    <p className="text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-300 mb-1">Rencana Bulanan</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-amber-900 dark:text-amber-100 tracking-tight truncate">{plans.filter(p => !p.isCompleted).length} Tugas Aktif</h3>
+                  </div>
+                </div>
 
-                {currentView === 'dashboard' && (
-                  <>
-                    {/* Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 xl:gap-3 2xl:gap-6">
-                      <div onClick={() => navigateTo('wallets')} className={`bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-800/60 p-4 sm:p-6 xl:p-4 2xl:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 xl:gap-2 2xl:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                        <div className="p-2.5 sm:p-3 xl:p-2 2xl:p-3 bg-blue-200 dark:bg-blue-700/50 text-blue-700 dark:text-blue-300 rounded-xl group-hover:scale-110 transition-transform border border-blue-300 dark:border-blue-600"><Wallet className="w-5 h-5 sm:w-6 sm:h-6 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" /></div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-300 font-bold leading-snug whitespace-nowrap">Saldo Dompet <span className="block opacity-75 font-normal mt-0.5">Semua Waktu</span></p>
-                          <h3 className="text-[15px] sm:text-lg lg:text-xl xl:text-[15px] 2xl:text-xl font-black text-blue-900 dark:text-blue-100 mt-1 sm:mt-1.5 tracking-tighter whitespace-nowrap">{renderAmount(stats.saldoSaatIni)}</h3>
+                {/* FORM & TABEL DASHBOARD UTAMA */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch lg:h-[680px]">
+                  
+                  {/* Kolom Kiri: Form Catat Transaksi */}
+                  <div className={`lg:col-span-4 bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-2xl flex flex-col ${box3D}`}>
+                    <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-5 flex items-center gap-2 shrink-0">
+                      <PlusCircle size={22} className="text-indigo-600 dark:text-indigo-400" /> Catat Transaksi
+                    </h2>
+                    
+                    <div className="flex-1 lg:overflow-y-auto lg:pr-2 pb-1">
+                      <form onSubmit={handleSubmitTransaction} className="space-y-4">
+                        <div>
+                          <label className="block text-xs sm:text-sm font-bold mb-1.5 text-gray-700 dark:text-gray-300">Tanggal</label>
+                          <input type="date" required value={formData.date} onChange={handleInputChange} name="date" className="w-full border-2 border-gray-300 dark:border-gray-600 p-2.5 rounded-lg font-medium text-gray-900 dark:text-white dark:bg-gray-700 outline-none focus:border-indigo-500 transition-colors cursor-pointer" />
                         </div>
-                      </div>
-                      
-                      <div onClick={() => { setHistoryType('pemasukan'); navigateTo('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 xl:p-4 2xl:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 xl:gap-2 2xl:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                        <div className="p-2.5 sm:p-3 xl:p-2 2xl:p-3 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-xl border border-green-200 dark:border-green-800 group-hover:scale-110 transition-transform"><TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" /></div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] sm:text-xs text-green-800 dark:text-green-300 font-bold leading-snug whitespace-nowrap">Pemasukan <span className="block opacity-75 font-normal mt-0.5">Filter Data</span></p>
-                          <h3 className="text-[15px] sm:text-lg lg:text-xl xl:text-[15px] 2xl:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tighter whitespace-nowrap">{renderAmount(stats.pemasukanFilter)}</h3>
+                        
+                        <div>
+                          <label className="block text-xs sm:text-sm font-bold mb-1.5 text-gray-700 dark:text-gray-300">Jenis Transaksi</label>
+                          <select name="type" value={formData.type} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 p-2.5 rounded-lg font-bold text-gray-900 dark:text-white dark:bg-gray-700 outline-none focus:border-indigo-500 transition-colors cursor-pointer">
+                            {Object.keys(categoryMap).map(k => <option key={k} value={k}>{k}</option>)}
+                            <option value="Lainnya...">+ Buat Tipe Baru...</option>
+                          </select>
+                          {formData.type === 'Lainnya...' && (
+                            <input type="text" name="customType" placeholder="Ketik jenis transaksi baru..." required value={formData.customType} onChange={handleInputChange} className="mt-2 w-full border-2 border-indigo-300 p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-600 dark:text-white font-medium outline-none focus:border-indigo-500 transition-colors" />
+                          )}
                         </div>
-                      </div>
-                      
-                      <div onClick={() => { setHistoryType('pengeluaran'); navigateTo('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 xl:p-4 2xl:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 xl:gap-2 2xl:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                        <div className="p-2.5 sm:p-3 xl:p-2 2xl:p-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-800 group-hover:scale-110 transition-transform"><TrendingDown className="w-5 h-5 sm:w-6 sm:h-6 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" /></div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] sm:text-xs text-red-800 dark:text-red-300 font-bold leading-snug whitespace-nowrap">Pengeluaran <span className="block opacity-75 font-normal mt-0.5">Filter Data</span></p>
-                          <h3 className="text-[15px] sm:text-lg lg:text-xl xl:text-[15px] 2xl:text-xl font-black text-gray-800 dark:text-white mt-1 sm:mt-1.5 tracking-tighter whitespace-nowrap">{renderAmount(stats.pengeluaranFilter)}</h3>
+                        
+                        <div className="relative">
+                          <label className="block text-xs sm:text-sm font-bold mb-1.5 text-gray-700 dark:text-gray-300">Kategori</label>
+                          <div onClick={() => setCatDropdownOpen(!catDropdownOpen)} className="w-full border-2 border-gray-300 dark:border-gray-600 p-2.5 rounded-lg flex justify-between items-center cursor-pointer font-bold text-gray-900 dark:text-white dark:bg-gray-700 outline-none focus:border-indigo-500 transition-colors select-none">
+                            <span className="truncate pr-2">{formData.category}</span><ChevronDown size={18} className="text-gray-500"/>
+                          </div>
+                          
+                          {catDropdownOpen && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setCatDropdownOpen(false)}></div>
+                              <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_#000] rounded-xl max-h-48 overflow-y-auto">
+                                {(categoryMap[formData.type] || []).map(cat => (
+                                  <div key={cat} className="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex justify-between items-center cursor-pointer border-b border-gray-100 dark:border-gray-700 transition-colors">
+                                    <span onClick={() => { setFormData({...formData, category: cat}); setCatDropdownOpen(false); }} className="flex-1 font-bold text-gray-900 dark:text-white truncate pr-2">{cat}</span>
+                                    <div onMouseDown={(e) => deleteCategoryFromMap(e, formData.type, cat)} className="p-1.5 bg-gray-200 dark:bg-gray-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg group transition-colors">
+                                      <Trash2 size={16} className="text-gray-500 group-hover:text-red-500" />
+                                    </div>
+                                  </div>
+                                ))}
+                                <div onClick={() => handleCatSelect('Lainnya...')} className="p-3 font-black text-indigo-600 dark:text-indigo-400 bg-gray-50 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                  + Tambah Kategori Baru...
+                                </div>
+                              </div>
+                            </>
+                          )}
+                          
+                          {formData.category === 'Lainnya...' && (
+                            <input type="text" name="customCategory" placeholder="Ketik kategori baru..." required value={formData.customCategory} onChange={handleInputChange} className="mt-2 w-full border-2 border-indigo-300 p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-600 dark:text-white font-medium outline-none focus:border-indigo-500 transition-colors" />
+                          )}
                         </div>
-                      </div>
-                      
-                      <div onClick={() => navigateTo('savings')} className={`bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/60 dark:to-purple-800/60 p-4 sm:p-6 xl:p-4 2xl:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 xl:gap-2 2xl:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                        <div className="p-2.5 sm:p-3 xl:p-2 2xl:p-3 bg-purple-200 dark:bg-purple-700/50 text-purple-700 dark:text-purple-300 rounded-xl group-hover:scale-110 transition-transform border border-purple-300 dark:border-purple-600"><PiggyBank className="w-5 h-5 sm:w-6 sm:h-6 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" /></div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] sm:text-xs text-purple-800 dark:text-purple-300 font-bold leading-snug whitespace-nowrap">Total Tabungan <span className="block opacity-75 font-normal mt-0.5">Semua Waktu</span></p>
-                          <h3 className="text-[15px] sm:text-lg lg:text-xl xl:text-[15px] 2xl:text-xl font-black text-purple-900 dark:text-purple-100 mt-1 sm:mt-1.5 tracking-tighter whitespace-nowrap">{renderAmount(stats.totalTabungan)}</h3>
-                        </div>
-                      </div>
-
-                      <div onClick={() => navigateTo('planner')} className={`bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/60 dark:to-amber-800/60 p-4 sm:p-6 xl:p-4 2xl:p-6 rounded-2xl flex items-start gap-3 sm:gap-4 xl:gap-2 2xl:gap-4 cursor-pointer group ${box3D} ${box3DHover}`}>
-                        <div className="p-2.5 sm:p-3 xl:p-2 2xl:p-3 bg-amber-200 dark:bg-amber-700/50 text-amber-700 dark:text-amber-300 rounded-xl group-hover:scale-110 transition-transform border border-amber-300 dark:border-amber-600"><ClipboardList className="w-5 h-5 sm:w-6 sm:h-6 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" /></div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300 font-bold leading-snug whitespace-nowrap">Rencana Bulanan <span className="block opacity-75 font-normal mt-0.5">Bulan Ini</span></p>
-                          <h3 className="text-[15px] sm:text-lg lg:text-xl xl:text-[15px] 2xl:text-xl font-black text-amber-900 dark:text-amber-100 mt-1 sm:mt-1.5 tracking-tighter whitespace-nowrap">{plans.filter(p => p.month === new Date().toISOString().slice(0,7) && !p.is_completed).length} Tugas</h3>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch lg:h-[680px]">
-                      
-                      <div className={`lg:col-span-4 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col ${box3D}`}>
-                        <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-4 sm:mb-5 flex items-center gap-2 shrink-0"><PlusCircle size={20} className="text-indigo-600 dark:text-indigo-400 sm:w-[22px] sm:h-[22px]" /> Catat Transaksi</h2>
-                        <div className="flex-1 lg:overflow-y-auto lg:pr-2 pb-1">
-                          <form onSubmit={handleSubmitTransaction} className="space-y-3 sm:space-y-4">
-                            <div>
-                              <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Tanggal</label>
-                              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Calendar size={16} className="text-gray-500 sm:w-[18px] sm:h-[18px]" /></div><input type="date" name="date" required value={formData.date} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors text-sm sm:text-base" /></div>
-                            </div>
-
-                            <div>
-                              <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Jenis Transaksi</label>
-                              <select name="type" value={formData.type} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors cursor-pointer text-sm sm:text-base">{Object.keys(categoryMap).map(type => <option key={type} value={type}>{type}</option>)}<option value="Lainnya...">Lainnya...</option></select>
-                              {formData.type === 'Lainnya...' && <input type="text" name="customType" placeholder="Ketik jenis transaksi baru..." required value={formData.customType} onChange={handleInputChange} className="mt-2 w-full border-2 border-indigo-300 dark:border-indigo-600 rounded-lg p-2 sm:p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-gray-900 dark:text-white font-medium outline-none text-sm sm:text-base" />}
-                            </div>
-
-                            <div className="relative">
-                              <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Kategori</label>
-                              <div onClick={() => setCatDropdownOpen(!catDropdownOpen)} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium flex justify-between items-center cursor-pointer select-none transition-colors focus:border-gray-900 dark:focus:border-gray-400 text-sm sm:text-base"><span className="truncate pr-2">{formData.category}</span><ChevronDown size={16} className="text-gray-500 shrink-0 sm:w-[18px] sm:h-[18px]" /></div>
-                              {catDropdownOpen && (
-                                <><div className="fixed inset-0 z-40" onClick={() => setCatDropdownOpen(false)}></div>
-                                  <div className="absolute z-50 w-full mt-1 sm:mt-2 bg-white dark:bg-gray-800 border-2 border-gray-800 dark:border-gray-600 rounded-lg shadow-[4px_4px_0_0_#000000] max-h-48 overflow-y-auto">
-                                    {(categoryMap[formData.type] || []).map(cat => (
-                                      <div key={cat} className="flex justify-between items-center p-2.5 sm:p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer font-medium border-b border-gray-100 dark:border-gray-700 text-sm sm:text-base"><span onClick={() => handleCatSelect(cat)} className="flex-1 text-gray-900 dark:text-white truncate">{cat}</span><div className="p-1 sm:p-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg ml-2 group transition-colors shrink-0" onMouseDown={(e) => deleteCategoryFromMap(e, formData.type, cat)}><Trash2 size={14} className="text-gray-400 group-hover:text-red-500 sm:w-4 sm:h-4" /></div></div>
-                                    ))}
-                                    <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer text-gray-900 dark:text-white font-bold text-sm sm:text-base" onClick={() => handleCatSelect('Lainnya...')}>+ Tambah Lainnya...</div>
-                                  </div></>
-                              )}
-                              {formData.category === 'Lainnya...' && <input type="text" name="customCategory" placeholder="Ketik kategori baru..." required value={formData.customCategory} onChange={handleInputChange} className="mt-2 w-full border-2 border-indigo-300 dark:border-indigo-600 rounded-lg p-2 sm:p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-gray-900 dark:text-white font-medium outline-none text-sm sm:text-base" />}
-                            </div>
-
-                            <div>
-                              <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Nominal (Rp)</label>
-                              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign size={16} className="text-gray-500 sm:w-[18px] sm:h-[18px]" /></div><input type="text" inputMode="numeric" name="amount" placeholder="0" required value={formData.amount} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-9 sm:pl-10 p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-black outline-none focus:border-gray-900 dark:focus:border-white transition-colors tracking-tight text-base sm:text-lg" /></div>
-                            </div>
-
-                            <div>
-                              <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Keterangan</label>
-                              <input type="text" name="description" placeholder="Cth: Makan siang..." value={formData.description} onChange={handleInputChange} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2 sm:p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors text-sm sm:text-base" />
-                            </div>
-
-                            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 sm:py-3.5 px-4 rounded-xl transition-all mt-4 sm:mt-6 border-2 border-indigo-900 shadow-[2px_2px_0_0_#312e81] active:shadow-none active:translate-y-[2px] text-sm sm:text-base">Simpan Transaksi</button>
-                          </form>
-                        </div>
-                      </div>
-
-                      <div className={`lg:col-span-8 bg-white dark:bg-gray-800 rounded-2xl flex flex-col h-[500px] lg:h-full overflow-hidden ${box3D}`}>
-                        <div className="p-4 sm:p-6 border-b-2 border-gray-200 dark:border-gray-700 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 gap-3 sm:gap-0">
-                          <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white">Riwayat Transaksi</h2>
-                          <div className="flex gap-2 w-full sm:w-auto">
-                            {isSelectMode ? (
-                               <button onClick={deleteSelectedTransactions} disabled={selectedIds.size === 0} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold border-2 border-red-900 disabled:opacity-50 disabled:cursor-not-allowed shadow-[2px_2px_0_0_#7f1d1d] active:shadow-none active:translate-y-[2px] transition-all"><Trash2 size={14} className="sm:w-4 sm:h-4" /> Hapus ({selectedIds.size})</button>
-                            ) : (
-                              <button onClick={() => {
-                                 const headers = ['ID,Tanggal,Tipe,Kategori,Nominal,Keterangan'];
-                                 const csvData = transactions.map(t => `${t.id},${t.date},${t.type},${t.category},${t.amount},"${t.description.replace(/"/g, '""')}"`);
-                                 const blob = new Blob([headers.concat(csvData).join('\n')], { type: 'text/csv;charset=utf-8;' });
-                                 const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.setAttribute('download', `Keuangan_${new Date().toISOString().split('T')[0]}.csv`);
-                                 document.body.appendChild(link); link.click(); document.body.removeChild(link);
-                              }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold border-2 border-green-900 shadow-[2px_2px_0_0_#14532d] active:shadow-none active:translate-y-[2px] transition-all"><Download size={14} className="sm:w-4 sm:h-4" /> Export CSV</button>
-                            )}
+                        
+                        <div>
+                          <label className="block text-xs sm:text-sm font-bold mb-1.5 text-gray-700 dark:text-gray-300">Nominal (Rp)</label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign size={18} className="text-gray-500" /></div>
+                            <input type="text" inputMode="numeric" required value={formData.amount} onChange={handleInputChange} name="amount" placeholder="0" className="w-full border-2 border-gray-300 dark:border-gray-600 pl-10 p-2.5 rounded-lg font-black text-lg text-gray-900 dark:text-white dark:bg-gray-700 outline-none focus:border-indigo-500 transition-colors tracking-tight" />
                           </div>
                         </div>
                         
-                        <div className="flex-1 overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-gray-900/50 relative">
-                          <table className="w-full text-left border-collapse min-w-[800px]">
-                            <thead className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs sm:text-sm sticky top-0 z-10 shadow-sm border-b-2 border-gray-200 dark:border-gray-700">
-                              <tr>
-                                {isSelectMode && <th className="p-2 sm:p-3 w-10 sm:w-12 text-center border-r border-gray-100 dark:border-gray-700">✓</th>}
-                                <th className="p-2 sm:p-3 font-bold whitespace-nowrap">Tanggal</th>
-                                <th className="p-2 sm:p-3 font-bold">Tipe</th>
-                                <th className="p-2 sm:p-3 font-bold">Kategori</th>
-                                <th className="p-2 sm:p-3 font-bold">Keterangan</th>
-                                <th className="p-2 sm:p-3 font-bold text-right">Nominal</th>
-                                <th className="p-2 sm:p-3 font-bold text-center">Aksi</th>
-                              </tr>
-                              <tr className="bg-gray-100 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-700">
-                                {isSelectMode && <th className="p-1 border-r border-gray-200 dark:border-gray-600"></th>}
-                                <th className="p-1 px-2"><input type="date" value={tableFilters.date} onChange={e => setTableFilters({...tableFilters, date: e.target.value})} className="w-full min-w-[110px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500" /></th>
-                                <th className="p-1 px-2"><select value={tableFilters.type} onChange={e => setTableFilters({...tableFilters, type: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500"><option value="">Semua</option>{uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}</select></th>
-                                <th className="p-1 px-2"><select value={tableFilters.category} onChange={e => setTableFilters({...tableFilters, category: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500"><option value="">Semua</option>{uniqueCats.map(c => <option key={c} value={c}>{c}</option>)}</select></th>
-                                <th className="p-1 px-2"><input type="text" placeholder="Cari..." value={tableFilters.desc} onChange={e => setTableFilters({...tableFilters, desc: e.target.value})} className="w-full min-w-[100px] p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-[11px] sm:text-xs font-semibold outline-none focus:border-indigo-500" /></th>
-                                <th className="p-1 px-2"></th>
-                                <th className="p-1 px-2 text-center"><button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedIds(new Set()); }} className={`text-[11px] sm:text-xs font-bold px-1.5 py-1.5 rounded w-full transition-colors ${isSelectMode ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 hover:bg-indigo-200'}`}>{isSelectMode ? 'Batal' : 'Pilih Baris'}</button></th>
-                              </tr>
-                            </thead>
-                            <tbody className="text-xs sm:text-sm">
-                              {filteredForTable.length === 0 ? (
-                                <tr><td colSpan={isSelectMode ? "7" : "6"} className="text-center text-gray-500 py-12 sm:py-16 bg-white dark:bg-gray-800 h-full"><Wallet size={40} className="mx-auto mb-3 opacity-20 sm:w-12 sm:h-12" /><p className="font-bold">Tidak ada transaksi ditemukan.</p></td></tr>
-                              ) : (
-                                filteredForTable.map((t) => {
-                                  const isIncome = t.type.toLowerCase().includes('pemasukan');
-                                  const isSaving = t.type.toLowerCase().includes('tabungan');
-                                  return (
-                                    <tr key={t.id} className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                      {isSelectMode && <td className="p-2 sm:p-3 text-center border-r border-gray-100 dark:border-gray-700"><input type="checkbox" checked={selectedIds.has(t.id)} onChange={() => toggleSelectTransaction(t.id)} className="w-4 h-4 rounded cursor-pointer accent-indigo-600"/></td>}
-                                      <td className="p-3 sm:p-4 text-gray-700 dark:text-gray-300 whitespace-nowrap font-medium">{t.date}</td>
-                                      <td className="p-3 sm:p-4"><span className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-bold inline-block border whitespace-nowrap ${isIncome ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' : isSaving ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-400' : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400'}`}>{t.type.toUpperCase()}</span></td>
-                                      <td className="p-3 sm:p-4 text-gray-900 dark:text-gray-100 font-bold max-w-[120px] truncate sm:max-w-none">{t.category}</td>
-                                      <td className="p-3 sm:p-4 text-gray-600 dark:text-gray-400 font-medium max-w-[150px] truncate sm:max-w-none">{t.description}</td>
-                                      <td className={`p-3 sm:p-4 text-right font-black whitespace-nowrap tracking-tight text-sm sm:text-base ${isIncome ? 'text-green-600 dark:text-green-400' : isSaving ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}`}>{isIncome ? '+' : '-'}{renderAmount(t.amount)}</td>
-                                      <td className="p-3 sm:p-4 text-center"><button onClick={() => deleteTransactionItem(t.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-1.5 sm:p-2 rounded-lg transition-all" title="Hapus Permanen"><Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button></td>
-                                    </tr>
-                                  );
-                                })
-                              )}
-                            </tbody>
-                          </table>
+                        <div>
+                          <label className="block text-xs sm:text-sm font-bold mb-1.5 text-gray-700 dark:text-gray-300">Keterangan Tambahan</label>
+                          <input type="text" value={formData.description} onChange={handleInputChange} name="description" placeholder="Opsional, cth: Makan siang..." className="w-full border-2 border-gray-300 dark:border-gray-600 p-2.5 rounded-lg font-medium text-gray-900 dark:text-white dark:bg-gray-700 outline-none focus:border-indigo-500 transition-colors" />
                         </div>
+                        
+                        <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg py-3.5 rounded-xl border-2 border-indigo-900 shadow-[2px_2px_0_0_#312e81] active:shadow-none active:translate-y-[2px] transition-all mt-6">
+                          Simpan Transaksi
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+
+                  {/* Kolom Kanan: Tabel Riwayat Utama */}
+                  <div className={`lg:col-span-8 bg-white dark:bg-gray-800 rounded-2xl flex flex-col h-[500px] lg:h-full overflow-hidden ${box3D}`}>
+                    <div className="p-4 sm:p-6 border-b-2 border-gray-200 dark:border-gray-700 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
+                      <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+                        <Clock className="text-indigo-500" /> Riwayat Transaksi Terbaru
+                      </h2>
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        {isSelectMode ? (
+                           <button onClick={deleteSelectedTransactions} disabled={selectedIds.size === 0} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold border-2 border-red-900 disabled:opacity-50 transition-all shadow-[2px_2px_0_0_#7f1d1d] active:shadow-none active:translate-y-[2px]">
+                             <Trash2 size={16} /> Hapus ({selectedIds.size})
+                           </button>
+                        ) : (
+                          <button onClick={() => setIsSelectMode(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-800 px-4 py-2 rounded-lg text-sm font-bold border-2 border-indigo-200 dark:border-indigo-700 transition-all">
+                            Pilih Multi Baris
+                          </button>
+                        )}
                       </div>
                     </div>
-                  </>
-                )}
+                    
+                    <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900/50 relative">
+                      <table className="w-full text-left border-collapse min-w-[800px]">
+                        <thead className="bg-white dark:bg-gray-800 sticky top-0 z-10 shadow-sm border-b-2 border-gray-200 dark:border-gray-700">
+                          <tr className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300">
+                            {isSelectMode && <th className="p-3 w-12 text-center border-r border-gray-100 dark:border-gray-700">✓</th>}
+                            <th className="p-3 whitespace-nowrap">Tanggal</th>
+                            <th className="p-3">Tipe</th>
+                            <th className="p-3">Kategori</th>
+                            <th className="p-3">Keterangan</th>
+                            <th className="p-3 text-right">Nominal</th>
+                            <th className="p-3 text-center">Aksi</th>
+                          </tr>
+                          
+                          {/* Baris Input Filter Kolom */}
+                          <tr className="bg-gray-100 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-700">
+                            {isSelectMode && <th className="p-1.5 border-r border-gray-200 dark:border-gray-600"></th>}
+                            <th className="p-1.5 px-2">
+                              <input type="date" value={tableFilters.date} onChange={e => setTableFilters({...tableFilters, date: e.target.value})} className="w-full min-w-[110px] p-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-xs font-bold outline-none focus:border-indigo-500" />
+                            </th>
+                            <th className="p-1.5 px-2">
+                              <select value={tableFilters.type} onChange={e => setTableFilters({...tableFilters, type: e.target.value})} className="w-full min-w-[120px] p-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-xs font-bold outline-none focus:border-indigo-500 cursor-pointer">
+                                <option value="">Semua Tipe</option>{uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            </th>
+                            <th className="p-1.5 px-2">
+                              <select value={tableFilters.category} onChange={e => setTableFilters({...tableFilters, category: e.target.value})} className="w-full min-w-[120px] p-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-xs font-bold outline-none focus:border-indigo-500 cursor-pointer">
+                                <option value="">Semua Kategori</option>{uniqueCats.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </th>
+                            <th className="p-1.5 px-2">
+                              <input type="text" placeholder="Cari ket..." value={tableFilters.desc} onChange={e => setTableFilters({...tableFilters, desc: e.target.value})} className="w-full min-w-[120px] p-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-xs font-bold outline-none focus:border-indigo-500" />
+                            </th>
+                            <th className="p-1.5 px-2"></th>
+                            <th className="p-1.5 px-2 text-center">
+                              <button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedIds(new Set()); }} className={`text-[11px] sm:text-xs font-black px-2 py-2 rounded-lg w-full transition-colors border-2 ${isSelectMode ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-800 hover:bg-red-200' : 'bg-gray-200 text-gray-700 border-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500 hover:bg-gray-300'}`}>
+                                {isSelectMode ? 'Batal' : 'Pilih Baris'}
+                              </button>
+                            </th>
+                          </tr>
+                        </thead>
+                        
+                        <tbody className="text-xs sm:text-sm text-gray-900 dark:text-white">
+                          {filteredForTable.map(t => {
+                            const isInc = t.type.toLowerCase().includes('pemasukan');
+                            const isSav = t.type.toLowerCase().includes('tabungan');
+                            return (
+                              <tr key={t.id} className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                {isSelectMode && (
+                                  <td className="p-3 text-center border-r border-gray-100 dark:border-gray-700">
+                                    <input type="checkbox" checked={selectedIds.has(t.id)} onChange={() => toggleSelectTransaction(t.id)} className="w-4 h-4 rounded cursor-pointer accent-indigo-600" />
+                                  </td>
+                                )}
+                                <td className="p-4 whitespace-nowrap font-bold text-gray-600 dark:text-gray-400">{t.date}</td>
+                                <td className="p-4">
+                                  <span className={`px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-black inline-block border whitespace-nowrap ${isInc ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : isSav ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800' : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'}`}>
+                                    {t.type.toUpperCase()}
+                                  </span>
+                                </td>
+                                <td className="p-4 font-black truncate max-w-[150px]">{t.category}</td>
+                                <td className="p-4 font-medium text-gray-600 dark:text-gray-400 truncate max-w-[180px]">{t.description}</td>
+                                <td className={`p-4 text-right font-black tracking-tight text-sm sm:text-base whitespace-nowrap ${isInc ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                  {isInc ? '+' : '-'}{formatRupiah(t.amount)}
+                                </td>
+                                <td className="p-4 text-center">
+                                  <button onClick={() => deleteTransactionItem(t.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-2 rounded-lg transition-colors" title="Hapus Permanen">
+                                    <Trash2 size={18} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {filteredForTable.length === 0 && (
+                            <tr>
+                              <td colSpan={isSelectMode ? "7" : "6"} className="text-center py-20 text-gray-500 dark:text-gray-400 font-bold bg-white dark:bg-gray-800">
+                                <Clock size={48} className="mx-auto mb-4 opacity-20" />
+                                Tidak ada transaksi ditemukan.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
               </>
             )}
 
-            {/* --- CUSTOM GLOBAL MODAL --- */}
+            {/* --- MODAL GLOBAL KUSTOM 3D --- */}
             {modalState.isOpen && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-                <div className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-2xl w-full max-w-[90%] sm:max-w-sm md:max-w-md ${box3D}`}>
-                  <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-2">{modalState.title}</h3>
-                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-5 sm:mb-6 font-medium leading-relaxed">{modalState.message}</p>
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+                <div className={`bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-3xl w-full max-w-sm md:max-w-md ${box3D}`}>
+                  <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mb-2">{modalState.title}</h3>
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-6 font-medium leading-relaxed">{modalState.message}</p>
                   
                   {modalState.type === 'prompt' && (
                     <input 
-                      type={modalState.inputType} autoFocus value={modalState.inputValue} inputMode={modalState.isCurrency ? "numeric" : "text"}
-                      className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-black outline-none focus:border-indigo-500 mb-5 sm:mb-6 transition-colors"
-                      onChange={(e) => {
+                      type={modalState.inputType} 
+                      autoFocus 
+                      value={modalState.inputValue} 
+                      onChange={e => {
                         let val = e.target.value;
                         if (modalState.isCurrency) {
                           const isNegative = val.startsWith('-');
@@ -1082,103 +1201,33 @@
                           val = num ? (isNegative ? '-' : '') + new Intl.NumberFormat('id-ID').format(num) : (isNegative ? '-' : '');
                         }
                         setModalState(prev => ({...prev, inputValue: val}));
-                      }}
-                      onKeyDown={(e) => { if(e.key === 'Enter') { if(modalState.onConfirm) modalState.onConfirm(modalState.inputValue); closeModal(); } }}
+                      }} 
+                      onKeyDown={e => { if(e.key === 'Enter') { if(modalState.onConfirm) modalState.onConfirm(modalState.inputValue); closeModal(); } }}
+                      className="w-full border-2 border-gray-900 dark:border-gray-500 p-3 rounded-xl mb-6 dark:bg-gray-700 dark:text-white font-black text-lg outline-none focus:border-indigo-600 dark:focus:border-indigo-400 transition-colors shadow-[2px_2px_0_0_#000] dark:shadow-[2px_2px_0_0_#000] focus:shadow-none focus:translate-y-[2px]" 
                     />
                   )}
 
-                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-3">
+                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 mt-2">
                     {modalState.type !== 'alert' && (
-                      <button onClick={closeModal} className="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-bold rounded-lg transition-colors text-sm sm:text-base">Batal</button>
+                      <button onClick={closeModal} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-black rounded-xl transition-colors text-sm sm:text-base border-2 border-transparent">
+                        Batal
+                      </button>
                     )}
-                    <button 
-                      onClick={() => { if(modalState.onConfirm) modalState.onConfirm(modalState.inputValue); closeModal(); }} 
-                      className={`w-full sm:w-auto px-5 py-3 sm:py-2.5 text-white font-bold rounded-lg transition-all border-2 active:shadow-none active:translate-y-[2px] text-sm sm:text-base ${modalState.type === 'confirm' ? 'bg-red-600 hover:bg-red-700 border-red-900 shadow-[2px_2px_0_0_#7f1d1d]' : 'bg-indigo-600 hover:bg-indigo-700 border-indigo-900 shadow-[2px_2px_0_0_#312e81]'}`}
-                    >
-                      {modalState.type === 'alert' ? 'OK Mengerti' : (modalState.type === 'confirm' ? 'Ya, Eksekusi' : 'Konfirmasi')}
+                    <button onClick={() => { if(modalState.onConfirm) modalState.onConfirm(modalState.inputValue); closeModal(); }} className={`w-full sm:w-auto px-6 py-3 sm:py-2.5 text-white font-black rounded-xl transition-all border-2 active:shadow-none active:translate-y-[2px] text-sm sm:text-base ${modalState.type === 'confirm' ? 'bg-red-600 hover:bg-red-700 border-red-900 shadow-[2px_2px_0_0_#7f1d1d]' : 'bg-indigo-600 hover:bg-indigo-700 border-indigo-900 shadow-[2px_2px_0_0_#312e81]'}`}>
+                      {modalState.type === 'alert' ? 'Mengerti' : (modalState.type === 'confirm' ? 'Ya, Eksekusi' : 'Konfirmasi')}
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* --- TUTORIAL MODAL --- */}
-            {showTutorial && (
-              <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn">
-                <div className={`bg-white dark:bg-gray-800 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden ${box3D}`}>
-                  <div className="p-4 sm:p-6 border-b-2 border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 shrink-0">
-                    <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                      <HelpCircle className="text-indigo-500" /> Buku Panduan KeuanganKu
-                    </h2>
-                    <button onClick={() => setShowTutorial(false)} className="p-2 bg-gray-200 hover:bg-red-100 dark:bg-gray-700 dark:hover:bg-red-900/50 text-gray-600 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400 rounded-full transition-colors">
-                      <X size={20} />
-                    </button>
-                  </div>
-                  
-                  <div className="p-4 sm:p-6 overflow-y-auto space-y-6 text-gray-700 dark:text-gray-300 text-sm sm:text-base">
-                    <div className="space-y-2">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><Wallet size={18} className="text-blue-500"/> 1. Saldo Dompet & Rekening</h3>
-                      <p>Menu ini berfungsi sebagai buku catatan rekening nyata Anda (seperti Dompet Tunai, BCA, GoPay, dll).</p>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li><strong>Tambah Dompet:</strong> Buat kategori dompet baru dengan warna pilihan.</li>
-                        <li><strong>Sesuaikan Saldo:</strong> Jika ada ketidakcocokan saldo asli dengan catatan di aplikasi, gunakan tombol ini untuk memperbaikinya secara manual tanpa mempengaruhi riwayat transaksi.</li>
-                      </ul>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><PlusCircle size={18} className="text-indigo-500"/> 2. Catat Transaksi</h3>
-                      <p>Ini adalah pusat kendali untuk mencatat arus kas Anda secara rutin.</p>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li><strong>Pilih Jenis:</strong> Tentukan apakah ini <em>Pemasukan</em>, <em>Pengeluaran Harian</em>, <em>Biaya Bulanan</em>, atau <em>Tabungan</em>.</li>
-                        <li><strong>Kategori Kustom:</strong> Jika kategori yang ada kurang cocok, pilih <strong>"Lainnya..."</strong>. Kategori baru yang diketik akan otomatis tersimpan permanen di database!</li>
-                        <li><strong>Hapus Kategori:</strong> Klik ikon tong sampah (🗑️) di *dropdown* untuk menghapusnya.</li>
-                      </ul>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><Target size={18} className="text-purple-500"/> 3. Target Tabungan</h3>
-                      <p>Gunakan menu ini untuk merencanakan impian jangka panjang (misalnya: Beli Laptop Baru, Liburan).</p>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li>Tentukan <strong>Target Nominal</strong>, <strong>Tanggal Capai</strong>, dan <strong>Urgensi</strong>.</li>
-                        <li>Klik <strong>Update Saldo</strong> untuk menyicil uang ke target tersebut. <em>(Tips: Ketik minus "-" di awal angka untuk menarik/mengurangi saldo).</em></li>
-                      </ul>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><ClipboardList size={18} className="text-amber-500"/> 4. Rencana Bulanan (Budgeting)</h3>
-                      <p>Berguna untuk menyusun anggaran pengeluaran rutin masa depan (bayar kos, listrik, internet).</p>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li>Data yang dicatat di sini <strong>belum memotong saldo aktual Anda</strong>. Ini murni sebatas "pengingat".</li>
-                        <li><strong>Tombol Eksekusi:</strong> Saat Anda benar-benar membayar tagihannya, klik tombol ini! Anda bisa mengedit nominalnya jika tagihan asli berbeda. Setelah dieksekusi, ia otomatis pindah ke riwayat transaksi nyata.</li>
-                      </ul>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><Filter size={18} className="text-gray-500"/> 5. Fitur Tambahan & Privasi</h3>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li><strong>Filter Waktu:</strong> Ubah tampilan ringkasan ke mode Harian, Bulanan, atau Semua Waktu di pojok kanan atas Dashboard.</li>
-                        <li><strong>Mode Mata (Privasi):</strong> Klik ikon Mata (👁️) di *header* untuk menyembunyikan nominal uang Anda saat membuka aplikasi di tempat umum.</li>
-                        <li><strong>Export CSV:</strong> Masuk ke riwayat transaksi dan klik tombol Export untuk men-*download* data ke format Excel.</li>
-                      </ul>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 sm:p-5 border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-end shrink-0">
-                    <button onClick={() => setShowTutorial(false)} className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all border-2 border-indigo-900 shadow-[2px_2px_0_0_#312e81] active:shadow-none active:translate-y-[2px]">
-                      Tutup Panduan
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            
           </div>
         </div>
       );
     }
 
     const root = createRoot(document.getElementById('root'));
-    root.render(<App />);
+    root.render(<AppWrapper />);
   </script>
 </body>
 </html>
