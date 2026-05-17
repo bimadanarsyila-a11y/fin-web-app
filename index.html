@@ -86,19 +86,145 @@
     }
 
     function MainApp({ supabase }) {
-      // Membuat user dummy agar aplikasi bisa langsung masuk ke Dashboard
-      const dummyUser = {
-        id: 'local-offline-user-123',
-        email: 'Mode Akses Langsung'
+      const [session, setSession] = useState(null);
+      const [authStatus, setAuthStatus] = useState('checking'); 
+      const isRedirectRef = useRef(window.location.hash.includes('access_token') || window.location.search.includes('code'));
+
+      useEffect(() => {
+        let isMounted = true;
+
+        const handleAuthChange = async (sessionUser) => {
+          if (!sessionUser || !sessionUser.email) {
+            if (isMounted) {
+              setSession(null);
+              setAuthStatus('unauthenticated');
+            }
+            return;
+          }
+
+          try {
+            console.log("Sistem mengecek validasi email pembeli:", sessionUser.email);
+            
+            const { data: whitelistData, error } = await supabase
+              .from('allowed_users')
+              .select('email')
+              .eq('email', sessionUser.email); 
+            
+            if (!isMounted) return;
+
+            if (error) {
+              console.error("Database menolak koneksi/error:", error.message);
+              setSession(sessionUser);
+              setAuthStatus('unauthorized');
+              return;
+            }
+            
+            if (whitelistData && whitelistData.length > 0) {
+              console.log("Akses Diizinkan!");
+              setSession(sessionUser);
+              setAuthStatus('authenticated');
+            } else {
+              console.log("Akses Diblokir! Email belum membeli produk.");
+              if (!isRedirectRef.current) {
+                await supabase.auth.signOut();
+                if (isMounted) {
+                  setSession(null);
+                  setAuthStatus('unauthenticated');
+                }
+              } else {
+                if (isMounted) {
+                  setSession(sessionUser); 
+                  setAuthStatus('unauthorized');
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Sistem gagal memverifikasi.", error);
+            if (isMounted) {
+              setSession(sessionUser);
+              setAuthStatus('unauthorized');
+            }
+          }
+        };
+
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          handleAuthChange(session?.user);
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          handleAuthChange(session?.user);
+        });
+
+        return () => {
+          isMounted = false;
+          subscription.unsubscribe();
+        };
+      }, [supabase]);
+
+      const handleLogin = async () => {
+        setAuthStatus('checking');
+        try {
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google'
+          });
+          if (error) throw error;
+        } catch (error) { 
+          setAuthStatus('unauthenticated'); 
+        }
       };
 
-      const handleLogout = () => {
-        // Tidak ada tindakan karena sistem login sudah dihapus
-        console.log("Fitur logout dinonaktifkan pada versi ini.");
+      const handleLogout = async () => {
+        await supabase.auth.signOut();
+        setSession(null);
+        setAuthStatus('unauthenticated');
       };
 
-      // Langsung tampilkan dashboard (melewati LoginScreen & UnauthorizedScreen)
-      return <Dashboard user={dummyUser} onLogout={handleLogout} supabase={supabase} />;
+      const LoginScreen = () => (
+        <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
+          <div className={`bg-white dark:bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center ${box3D}`}>
+            <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6"><ShieldCheck size={40} className="text-indigo-600 dark:text-indigo-400" /></div>
+            <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">Dashboard Keuangan</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 font-medium">Sistem manajemen finansial profesional & eksklusif.</p>
+            <button onClick={handleLogin} className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 border-2 border-gray-900 dark:border-gray-500 py-3.5 rounded-xl font-bold shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_#000] active:translate-y-1 active:shadow-none transition-all dark:text-white">
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Masuk dengan Akun Terdaftar
+            </button>
+            <p className="mt-6 text-xs text-gray-400 font-medium italic">Proteksi Keamanan Aktif v2.2</p>
+          </div>
+        </div>
+      );
+
+      const UnauthorizedScreen = () => (
+        <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
+          <div className={`bg-white dark:bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center ${box3D}`}>
+            <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6"><Lock size={40} className="text-red-600 dark:text-red-400" /></div>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Akses Ditolak</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 font-medium italic border-b-2 border-gray-100 dark:border-gray-700 pb-4">{session?.email}</p>
+            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border-2 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-400 font-bold text-sm mb-6 leading-relaxed">
+              Sistem mendeteksi bahwa email Anda belum terdaftar sebagai pengguna resmi produk ini. Silakan beli akses untuk mulai menggunakan aplikasi.
+            </div>
+            <div className="flex flex-col gap-3">
+              <a href="http://lynk.id/kerjadengansistem/6edrd4yrpe3y/checkout" target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center bg-indigo-600 text-white py-3.5 rounded-xl font-bold hover:bg-indigo-700 transition-colors border-2 border-indigo-900 shadow-[2px_2px_0_0_#312e81] active:shadow-none active:translate-y-[2px]">
+                Beli Akses Sekarang
+              </a>
+              <button onClick={handleLogout} className="w-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 py-3 rounded-xl font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                Kembali ke Halaman Login
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (authStatus === 'checking') return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900"><div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div></div>;
+      if (authStatus === 'unauthenticated') return <LoginScreen />;
+      if (authStatus === 'unauthorized') return <UnauthorizedScreen />;
+
+      return <Dashboard user={session} onLogout={handleLogout} supabase={supabase} />;
     }
 
     function Dashboard({ user, onLogout, supabase }) {
