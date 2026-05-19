@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Keuangan Pribadi</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -13,10 +12,7 @@
     }
   </script>
 
-  <!-- Babel untuk kompilasi JSX di Browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
 </head>
 <body class="antialiased bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -30,7 +26,7 @@
       PlusCircle, Download, Wallet, TrendingUp, TrendingDown, PiggyBank, 
       Trash2, Calendar, DollarSign, Sun, Moon, ArrowLeft, Target, Edit2, 
       ChevronDown, AlertCircle, Clock, CheckCircle2, CreditCard, Filter, 
-      ClipboardList, LogOut, Eye, EyeOff, HelpCircle, X, ShieldCheck, Lock
+      ClipboardList, LogOut, Eye, EyeOff, HelpCircle, X, ShieldCheck, Lock, Play
     } from 'https://esm.sh/lucide-react@0.292.0';
 
     // ==========================================
@@ -93,8 +89,8 @@
       useEffect(() => {
         let isMounted = true;
 
-        const handleAuthChange = async (sessionUser) => {
-          if (!sessionUser || !sessionUser.email) {
+        const handleAuthChange = async (sessionData) => {
+          if (!sessionData || !sessionData.user || !sessionData.user.email) {
             if (isMounted) {
               setSession(null);
               setAuthStatus('unauthenticated');
@@ -103,25 +99,32 @@
           }
 
           try {
-            console.log("Sistem mengecek validasi email pembeli:", sessionUser.email);
+            console.log("Sistem mengecek validasi email pembeli:", sessionData.user.email);
+            
+            // Bypass khusus untuk mode testing anonim
+            if(sessionData.user.email === 'tester@canvas.local') {
+              setSession(sessionData);
+              setAuthStatus('authenticated');
+              return;
+            }
             
             const { data: whitelistData, error } = await supabase
               .from('allowed_users')
               .select('email')
-              .eq('email', sessionUser.email); 
+              .eq('email', sessionData.user.email); 
             
             if (!isMounted) return;
 
             if (error) {
               console.error("Database menolak koneksi/error:", error.message);
-              setSession(sessionUser);
+              setSession(sessionData);
               setAuthStatus('unauthorized');
               return;
             }
             
             if (whitelistData && whitelistData.length > 0) {
               console.log("Akses Diizinkan!");
-              setSession(sessionUser);
+              setSession(sessionData);
               setAuthStatus('authenticated');
             } else {
               console.log("Akses Diblokir! Email belum membeli produk.");
@@ -133,7 +136,7 @@
                 }
               } else {
                 if (isMounted) {
-                  setSession(sessionUser); 
+                  setSession(sessionData); 
                   setAuthStatus('unauthorized');
                 }
               }
@@ -141,18 +144,18 @@
           } catch (error) {
             console.error("Sistem gagal memverifikasi.", error);
             if (isMounted) {
-              setSession(sessionUser);
+              setSession(sessionData);
               setAuthStatus('unauthorized');
             }
           }
         };
 
         supabase.auth.getSession().then(({ data: { session } }) => {
-          handleAuthChange(session?.user);
+          handleAuthChange(session);
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-          handleAuthChange(session?.user);
+          handleAuthChange(session);
         });
 
         return () => {
@@ -165,7 +168,10 @@
         setAuthStatus('checking');
         try {
           const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google'
+            provider: 'google',
+            options: {
+              scopes: 'https://www.googleapis.com/auth/calendar.events' // Request Google Calendar API Access
+            }
           });
           if (error) throw error;
         } catch (error) { 
@@ -173,8 +179,23 @@
         }
       };
 
+      const handleTestingBypass = () => {
+        // Mode testing khusus Canvas
+        setAuthStatus('checking');
+        setTimeout(() => {
+          const fakeSession = {
+            user: { id: 'canvas-tester-123', email: 'tester@canvas.local' },
+            provider_token: null // No token for testing
+          };
+          setSession(fakeSession);
+          setAuthStatus('authenticated');
+        }, 800);
+      };
+
       const handleLogout = async () => {
-        await supabase.auth.signOut();
+        if(session?.user?.email !== 'tester@canvas.local') {
+          await supabase.auth.signOut();
+        }
         setSession(null);
         setAuthStatus('unauthenticated');
       };
@@ -185,7 +206,8 @@
             <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6"><ShieldCheck size={40} className="text-indigo-600 dark:text-indigo-400" /></div>
             <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">Dashboard Keuangan</h1>
             <p className="text-gray-600 dark:text-gray-400 mb-8 font-medium">Sistem manajemen finansial profesional & eksklusif.</p>
-            <button onClick={handleLogin} className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 border-2 border-gray-900 dark:border-gray-500 py-3.5 rounded-xl font-bold shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_#000] active:translate-y-1 active:shadow-none transition-all dark:text-white">
+            
+            <button onClick={handleLogin} className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 border-2 border-gray-900 dark:border-gray-500 py-3.5 rounded-xl font-bold shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_#000] active:translate-y-1 active:shadow-none transition-all dark:text-white mb-4">
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -194,7 +216,12 @@
               </svg>
               Masuk dengan Akun Terdaftar
             </button>
-            <p className="mt-6 text-xs text-gray-400 font-medium italic">Proteksi Keamanan Aktif v2.2</p>
+            
+            <button onClick={handleTestingBypass} className="w-full flex items-center justify-center gap-3 bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-amber-900 py-3.5 rounded-xl font-bold transition-all shadow-[4px_4px_0_0_#78350f] active:translate-y-1 active:shadow-none">
+              <Play size={18} className="fill-amber-900" /> Masuk Mode Testing (Bypass)
+            </button>
+
+            <p className="mt-6 text-xs text-gray-400 font-medium italic">Proteksi Keamanan Aktif v2.3</p>
           </div>
         </div>
       );
@@ -204,7 +231,7 @@
           <div className={`bg-white dark:bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center ${box3D}`}>
             <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6"><Lock size={40} className="text-red-600 dark:text-red-400" /></div>
             <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Akses Ditolak</h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 font-medium italic border-b-2 border-gray-100 dark:border-gray-700 pb-4">{session?.email}</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 font-medium italic border-b-2 border-gray-100 dark:border-gray-700 pb-4">{session?.user?.email}</p>
             <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border-2 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-400 font-bold text-sm mb-6 leading-relaxed">
               Sistem mendeteksi bahwa email Anda belum terdaftar sebagai pengguna resmi produk ini. Silakan beli akses untuk mulai menggunakan aplikasi.
             </div>
@@ -224,16 +251,17 @@
       if (authStatus === 'unauthenticated') return <LoginScreen />;
       if (authStatus === 'unauthorized') return <UnauthorizedScreen />;
 
-      return <Dashboard user={session} onLogout={handleLogout} supabase={supabase} />;
+      return <Dashboard session={session} onLogout={handleLogout} supabase={supabase} />;
     }
 
-    function Dashboard({ user, onLogout, supabase }) {
+    function Dashboard({ session, onLogout, supabase }) {
+      const user = session?.user;
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem('finance_theme') === 'dark');
       const [showBalance, setShowBalance] = useState(() => localStorage.getItem('finance_show_balance') !== 'false');
       const [showTutorial, setShowTutorial] = useState(false);
       const [currentView, setCurrentView] = useState('dashboard');
       const [isFetchingData, setIsFetchingData] = useState(true);
-      const [saveStatus, setSaveStatus] = useState(''); // Status animasi penyimpanan
+      const [saveStatus, setSaveStatus] = useState(''); 
       
       const previousSaveRef = useRef(null);
 
@@ -241,7 +269,7 @@
       const [goals, setGoals] = useState([]);
       const [plans, setPlans] = useState([]);
       const [wallets, setWallets] = useState([]);
-      const [customCategories, setCustomCategories] = useState([]);
+      const [customCategories, setCustomCategories] = useState([]); // Array of {type, name, parent?}
 
       const initialCategoryMap = {
         'Pemasukan': ['Gaji', 'Bonus', 'Hasil Bisnis', 'Investasi'],
@@ -256,33 +284,46 @@
         const loadData = async () => {
           setIsFetchingData(true);
           try {
-            // Perbaikan Query: Hapus order by updated_at agar tidak error jika kolom tidak ada
-            const { data, error } = await supabase
-                .from('user_data')
-                .select('*')
-                .eq('user_id', user.id)
-                .limit(1);
+            // Coba ambil dari localStorage dulu untuk kecepatan (Offline first)
+            const localDataStr = localStorage.getItem(`finance_data_${user.id}`);
+            if (localDataStr) {
+              try {
+                const localData = JSON.parse(localDataStr);
+                setTransactions(Array.isArray(localData.transactions) ? localData.transactions : []);
+                setWallets(Array.isArray(localData.wallets) ? localData.wallets : []);
+                setGoals(Array.isArray(localData.goals) ? localData.goals : []);
+                setPlans(Array.isArray(localData.plans) ? localData.plans : []);
+                setCustomCategories(Array.isArray(localData.category_map) ? localData.category_map : []);
+                previousSaveRef.current = localDataStr;
+              } catch(e){}
+            }
 
-            if (data && data.length > 0) {
-              const userData = data[0];
-              setTransactions(Array.isArray(userData.transactions) ? userData.transactions : []);
-              setWallets(Array.isArray(userData.wallets) ? userData.wallets : []);
-              setGoals(Array.isArray(userData.goals) ? userData.goals : []);
-              setPlans(Array.isArray(userData.plans) ? userData.plans : []);
-              setCustomCategories(Array.isArray(userData.category_map) ? userData.category_map : []);
-              
-              previousSaveRef.current = JSON.stringify({
-                transactions: Array.isArray(userData.transactions) ? userData.transactions : [],
-                goals: Array.isArray(userData.goals) ? userData.goals : [],
-                plans: Array.isArray(userData.plans) ? userData.plans : [],
-                wallets: Array.isArray(userData.wallets) ? userData.wallets : [],
-                category_map: Array.isArray(userData.category_map) ? userData.category_map : []
-              });
-            } else {
-              // Jika user baru, inisialisasi state awal
-              previousSaveRef.current = JSON.stringify({
-                transactions: [], goals: [], plans: [], wallets: [], category_map: []
-              });
+            // Sync dengan Supabase (Jika bukan mode testing)
+            if(user.email !== 'tester@canvas.local') {
+              const { data, error } = await supabase
+                  .from('user_data')
+                  .select('*')
+                  .eq('user_id', user.id)
+                  .limit(1);
+
+              if (data && data.length > 0) {
+                const userData = data[0];
+                setTransactions(Array.isArray(userData.transactions) ? userData.transactions : []);
+                setWallets(Array.isArray(userData.wallets) ? userData.wallets : []);
+                setGoals(Array.isArray(userData.goals) ? userData.goals : []);
+                setPlans(Array.isArray(userData.plans) ? userData.plans : []);
+                setCustomCategories(Array.isArray(userData.category_map) ? userData.category_map : []);
+                
+                const latestDataStr = JSON.stringify({
+                  transactions: Array.isArray(userData.transactions) ? userData.transactions : [],
+                  goals: Array.isArray(userData.goals) ? userData.goals : [],
+                  plans: Array.isArray(userData.plans) ? userData.plans : [],
+                  wallets: Array.isArray(userData.wallets) ? userData.wallets : [],
+                  category_map: Array.isArray(userData.category_map) ? userData.category_map : []
+                });
+                previousSaveRef.current = latestDataStr;
+                localStorage.setItem(`finance_data_${user.id}`, latestDataStr); // Update local backup
+              }
             }
           } catch (error) {
             console.error("Error fetching data:", error);
@@ -291,9 +332,8 @@
           }
         };
         loadData();
-      }, [supabase, user.id]);
+      }, [supabase, user.id, user.email]);
 
-      // Bulletproof Auto Save
       useEffect(() => {
         if (isFetchingData) return; 
         
@@ -304,15 +344,20 @@
           if (previousSaveRef.current === dataString) return;
           previousSaveRef.current = dataString;
 
+          // Simpan ke LocalStorage seketika (Offline Mode)
+          localStorage.setItem(`finance_data_${user.id}`, dataString);
+
+          // Jika mode testing, cukup simpan di local
+          if(user.email === 'tester@canvas.local') {
+             setSaveStatus('saved');
+             setTimeout(() => setSaveStatus(''), 2500);
+             return;
+          }
+
           setSaveStatus('saving');
           try {
             const { data: existing } = await supabase.from('user_data').select('id').eq('user_id', user.id).limit(1);
-            
-            // Payload tanpa updated_at untuk mencegah error skema database
-            const payload = {
-              user_id: user.id, 
-              ...dataToSave
-            };
+            const payload = { user_id: user.id, ...dataToSave };
 
             let saveErr;
             if (existing && existing.length > 0) {
@@ -335,15 +380,25 @@
         
         const timeout = setTimeout(saveData, 1000);
         return () => clearTimeout(timeout);
-      }, [transactions, goals, plans, wallets, customCategories, user.id, supabase, isFetchingData]);
-
+      }, [transactions, goals, plans, wallets, customCategories, user.id, user.email, supabase, isFetchingData]);
 
       const categoryMap = useMemo(() => {
-        const map = { ...initialCategoryMap };
+        const map = {};
+        // 1. Masukkan semua default kategori
+        for (const key in initialCategoryMap) {
+          map[key] = [...initialCategoryMap[key]];
+        }
+        // 2. Terapkan kategori kustom (tambah / sembunyikan)
         if(Array.isArray(customCategories)) {
           customCategories.forEach(c => {
-            if (!map[c.type]) map[c.type] = [];
-            if (!map[c.type].includes(c.name)) map[c.type].push(c.name);
+            if (c.type === 'hidden_default') {
+              // Hapus default kategori yang di-hide user
+              if (map[c.parent]) map[c.parent] = map[c.parent].filter(name => name !== c.name);
+            } else {
+              // Tambahkan kategori kustom baru
+              if (!map[c.type]) map[c.type] = [];
+              if (!map[c.type].includes(c.name)) map[c.type].push(c.name);
+            }
           });
         }
         return map;
@@ -372,7 +427,7 @@
       const [goalForm, setGoalForm] = useState({ name: '', target: '', date: '', urgency: 'sedang' });
       
       const [planForm, setPlanForm] = useState({
-        month: new Date().toISOString().slice(0, 7), type: 'Biaya Bulanan', customType: '', category: 'Listrik & Air', customCategory: '', amount: '', description: ''
+        date: new Date().toISOString().split('T')[0], type: 'Biaya Bulanan', customType: '', category: 'Listrik & Air', customCategory: '', amount: '', description: ''
       });
 
       const [showWalletForm, setShowWalletForm] = useState(false);
@@ -401,8 +456,14 @@
         const { name, value } = e.target;
         if (name === 'type') {
           const isCustom = value === 'Lainnya...';
-          const firstCat = isCustom ? '' : (categoryMap[value] ? categoryMap[value][0] : '');
-          setFormData(prev => ({ ...prev, type: value, category: isCustom ? 'Lainnya...' : firstCat, customType: isCustom ? prev.customType : '', customCategory: isCustom ? prev.customCategory : '' }));
+          // Khusus mode tabungan, ambil dari goals
+          if (value.toLowerCase() === 'tabungan') {
+            const defaultSavingsCat = goals.length > 0 ? goals[0].name : 'Tabungan Bebas';
+            setFormData(prev => ({ ...prev, type: value, category: defaultSavingsCat, customType: '', customCategory: '' }));
+          } else {
+            const firstCat = isCustom ? '' : (categoryMap[value] ? categoryMap[value][0] : '');
+            setFormData(prev => ({ ...prev, type: value, category: isCustom ? 'Lainnya...' : firstCat, customType: isCustom ? prev.customType : '', customCategory: isCustom ? prev.customCategory : '' }));
+          }
         } else if (name === 'amount') {
           const num = value.replace(/[^0-9]/g, '');
           setFormData(prev => ({ ...prev, amount: num ? new Intl.NumberFormat('id-ID').format(num) : '' }));
@@ -415,12 +476,26 @@
       const handlePlanCatSelect = (cat) => { setPlanForm(prev => ({ ...prev, category: cat, customCategory: cat === 'Lainnya...' ? prev.customCategory : '' })); setPlanCatDropdownOpen(false); };
 
       const deleteCategoryFromMap = async (e, type, categoryToDelete) => {
-        e.preventDefault(); e.stopPropagation(); setCatDropdownOpen(false); setPlanCatDropdownOpen(false);
+        e.preventDefault(); 
+        e.stopPropagation(); // Mencegah dropdown tertutup atau kategori terpilih secara tidak sengaja
+        setCatDropdownOpen(false); 
+        setPlanCatDropdownOpen(false);
         setModalState({
-          isOpen: true, type: 'confirm', title: 'Hapus Kategori', message: `Hapus kategori kustom "${categoryToDelete}"? (Kategori default tidak bisa dihapus)`,
+          isOpen: true, type: 'confirm', title: 'Hapus Kategori', message: `Anda yakin ingin menghapus kategori "${categoryToDelete}" dari daftar?`,
           onConfirm: async () => {
-            setCustomCategories(prev => prev.filter(c => !(c.type === type && c.name === categoryToDelete)));
+            const isDefault = initialCategoryMap[type] && initialCategoryMap[type].includes(categoryToDelete);
+            setCustomCategories(prev => {
+              if (isDefault) {
+                // Sembunyikan kategori default
+                return [...prev, { type: 'hidden_default', parent: type, name: categoryToDelete }];
+              } else {
+                // Hapus kategori kustom
+                return prev.filter(c => !(c.type === type && c.name === categoryToDelete));
+              }
+            });
+            // Reset pilihan jika sedang dipilih
             if(formData.category === categoryToDelete) setFormData(prev => ({ ...prev, category: 'Lainnya...' }));
+            if(planForm.category === categoryToDelete) setPlanForm(prev => ({ ...prev, category: 'Lainnya...' }));
           }
         });
       };
@@ -467,6 +542,7 @@
       }, [transactions, filteredByGlobal]);
 
       const sumOfWallets = wallets.reduce((acc, w) => acc + w.balance, 0);
+      const totalTagihanAktif = (Array.isArray(plans) ? plans : []).filter(p => !p.is_completed).reduce((acc, curr) => acc + curr.amount, 0);
 
       const handleSubmitTransaction = async (e) => {
         e.preventDefault();
@@ -485,13 +561,35 @@
           }
         }
 
+        // OTOMATISASI TABUNGAN: Jika Tipe Tabungan, salurkan uang ke Target Tabungan yang dipilih
+        if (finalType.toLowerCase() === 'tabungan' && finalCategory !== 'Tabungan Bebas' && finalCategory !== 'Lainnya...') {
+           setGoals(prev => prev.map(g => {
+             if (g.name === finalCategory) {
+               return { ...g, saved: g.saved + parsedAmount };
+             }
+             return g;
+           }));
+        }
+
         const newTx = {
           id: Date.now().toString(), date: formData.date, type: finalType, category: finalCategory,
           amount: parsedAmount, description: formData.description || '-'
         };
 
         setTransactions([newTx, ...transactions]);
-        setFormData(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
+        
+        // Reset category appropriately
+        let resetCategory = finalCategory;
+        if (finalType.toLowerCase() === 'tabungan') resetCategory = goals.length > 0 ? goals[0].name : 'Tabungan Bebas';
+        else if (categoryMap[finalType] && categoryMap[finalType].length > 0) resetCategory = categoryMap[finalType][0];
+        
+        setFormData(prev => ({ ...prev, type: finalType, category: resetCategory, customType: '', customCategory: '', amount: '', description: '' }));
+      };
+
+      const toggleSelectTransaction = (id) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
+        setSelectedIds(newSet);
       };
 
       const deleteTransactionItem = (id) => {
@@ -534,16 +632,12 @@
               if (isNaN(amount)) return setTimeout(() => setModalState({ isOpen: true, type: 'alert', title: 'Error', message: 'Nominal tidak valid!' }), 300);
               if (isNegative) amount = -amount;
               
-              // VALIDASI: Cek ketersediaan Saldo Tabungan
               if (amount > 0) {
                 const totalAllocated = goals.reduce((acc, g) => acc + g.saved, 0);
                 const unallocated = stats.totalTabungan - totalAllocated;
-                
                 if (amount > unallocated) {
                   return setTimeout(() => setModalState({ 
-                    isOpen: true, 
-                    type: 'alert', 
-                    title: 'Saldo Tidak Cukup', 
+                    isOpen: true, type: 'alert', title: 'Saldo Tidak Cukup', 
                     message: `Total seluruh tabungan belum mencukupi! Sisa tabungan bebas yang bisa dialokasikan hanya: Rp ${new Intl.NumberFormat('id-ID').format(Math.max(0, unallocated))}` 
                   }), 300);
                 }
@@ -641,7 +735,6 @@
         const submitWallet = async (e) => {
           e.preventDefault(); if (!walletForm.name) return;
           const newWallet = { id: Date.now().toString(), name: walletForm.name, balance: 0, color: walletForm.color };
-          
           setWallets([...wallets, newWallet]);
           setShowWalletForm(false); setWalletForm({ name: '', color: WalletColors[0].class });
         };
@@ -831,9 +924,15 @@
 
           let finalType = planForm.type; let finalCategory = planForm.category;
           if (planForm.type === 'Lainnya...' && planForm.customType.trim() !== '') finalType = planForm.customType.trim();
-          if (planForm.category === 'Lainnya...' && planForm.customCategory.trim() !== '') finalCategory = planForm.customCategory.trim();
+          
+          if (planForm.category === 'Lainnya...' && planForm.customCategory.trim() !== '') {
+            finalCategory = planForm.customCategory.trim();
+            if (!categoryMap[finalType]?.includes(finalCategory)) {
+              setCustomCategories([...customCategories, { type: finalType, name: finalCategory }]);
+            }
+          }
 
-          const newPlan = { id: Date.now().toString(), month: planForm.month, type: finalType, category: finalCategory, amount: parsedAmount, description: planForm.description || '-', is_completed: false };
+          const newPlan = { id: Date.now().toString(), date: planForm.date, type: finalType, category: finalCategory, amount: parsedAmount, description: planForm.description || '-', is_completed: false };
           
           setPlans([newPlan, ...plans]);
           setPlanForm(prev => ({ ...prev, type: finalType, category: finalCategory, customType: '', customCategory: '', amount: '', description: '' }));
@@ -841,7 +940,7 @@
 
         const executePlan = (plan) => {
           setModalState({
-            isOpen: true, type: 'prompt', inputType: 'text', isCurrency: true, title: 'Eksekusi Rencana', 
+            isOpen: true, type: 'prompt', inputType: 'text', isCurrency: true, title: 'Eksekusi Tagihan', 
             message: `Catat "${plan.category}" ke riwayat hari ini. Edit nominal jika aktualnya berbeda:`,
             inputValue: new Intl.NumberFormat('id-ID').format(plan.amount),
             onConfirm: async (val) => {
@@ -850,7 +949,7 @@
               
               setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, is_completed: true } : p));
               
-              const newTx = { id: Date.now().toString(), date: new Date().toISOString().split('T')[0], type: plan.type, category: plan.category, amount: actualAmount, description: `[Rencana] ${plan.description}` };
+              const newTx = { id: Date.now().toString(), date: new Date().toISOString().split('T')[0], type: plan.type, category: plan.category, amount: actualAmount, description: `[Tagihan] ${plan.description}` };
               setTransactions(prev => [newTx, ...prev]);
             }
           });
@@ -858,27 +957,98 @@
 
         const deletePlan = (id) => {
           setModalState({
-            isOpen: true, type: 'confirm', title: 'Hapus Rencana', message: 'Hapus rencana ini dari daftar?',
+            isOpen: true, type: 'confirm', title: 'Hapus Tagihan', message: 'Hapus tagihan ini dari daftar?',
             onConfirm: async () => {
               setPlans(prev => prev.filter(p => p.id !== id));
             }
           });
         };
 
-        const currentMonthPlans = plans.filter(p => p.month === planForm.month);
+        const addEventToGoogleCalendar = async (plan) => {
+          if (!session || !session.provider_token || session.user.email === 'tester@canvas.local') {
+            setModalState({ 
+              isOpen: true, type: 'alert', title: 'Gagal Sinkronisasi', 
+              message: 'Fitur ini membutuhkan akses kalender. Anda sedang dalam Mode Testing atau belum memberikan izin API kalender.' 
+            });
+            return;
+          }
+
+          try {
+            setSaveStatus('Menyinkronkan...');
+            
+            // Set jam 9 Pagi di hari tagihan tersebut
+            const startTime = new Date(plan.date);
+            startTime.setHours(9, 0, 0);
+            
+            const endTime = new Date(plan.date);
+            endTime.setHours(10, 0, 0);
+
+            const event = {
+              summary: `Tagihan: ${plan.category}`,
+              description: `Nominal: Rp ${new Intl.NumberFormat('id-ID').format(plan.amount)}\nKeterangan: ${plan.description}`,
+              start: {
+                dateTime: startTime.toISOString(),
+                timeZone: 'Asia/Jakarta'
+              },
+              end: {
+                dateTime: endTime.toISOString(),
+                timeZone: 'Asia/Jakarta'
+              },
+              reminders: {
+                useDefault: false,
+                overrides: [
+                  { method: 'popup', minutes: 24 * 60 }, // H-1 (24 Jam)
+                  { method: 'popup', minutes: 60 }       // 1 Jam sebelum
+                ]
+              }
+            };
+
+            const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.provider_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(event)
+            });
+
+            if (!response.ok) {
+              const errData = await response.json();
+              throw new Error(errData.error?.message || "Gagal menyimpan ke kalender");
+            }
+            
+            setSaveStatus('');
+            setModalState({ 
+              isOpen: true, type: 'alert', title: 'Berhasil!', 
+              message: `Tagihan "${plan.category}" berhasil ditambahkan ke Kalender Google Anda beserta alarmnya.` 
+            });
+
+          } catch (error) {
+            console.error("G-Cal Error:", error);
+            setSaveStatus('');
+            setModalState({ isOpen: true, type: 'alert', title: 'Error Kalender', message: error.message });
+          }
+        };
+
+        // Mengelompokkan rencana berdasarkan bulan (YYYY-MM) dari tanggalnya (plan.date)
+        const currentMonthPrefix = planForm.date.slice(0, 7);
+        const currentMonthPlans = plans.filter(p => p.date && p.date.startsWith(currentMonthPrefix));
         const totalPlannedAmount = currentMonthPlans.reduce((acc, curr) => acc + curr.amount, 0);
 
         return (
           <div className="space-y-4 sm:space-y-6 animate-fadeIn">
             <div className="flex items-center gap-3 sm:gap-4">
               <button onClick={() => navigateTo('dashboard')} className={`p-2 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full ${box3D}`}><ArrowLeft size={18} className="sm:w-5 sm:h-5" /></button>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><ClipboardList className="text-amber-500 w-5 h-5 sm:w-6 sm:h-6" /> Rencana Bulanan</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><ClipboardList className="text-amber-500 w-5 h-5 sm:w-6 sm:h-6" /> Tagihan Aktif</h2>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
               <div className={`lg:col-span-4 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col ${box3D}`}>
-                <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-4 sm:mb-5">Buat Rencana</h2>
+                <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white mb-4 sm:mb-5">Buat Tagihan Baru</h2>
                 <form onSubmit={handlePlanSubmit} className="space-y-3 sm:space-y-4">
-                  <div><label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Bulan Rencana</label><input type="month" required value={planForm.month} onChange={e => setPlanForm({...planForm, month: e.target.value})} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors" /></div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Tanggal Tagihan</label>
+                    <input type="date" required value={planForm.date} onChange={e => setPlanForm({...planForm, date: e.target.value})} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 dark:focus:border-white transition-colors cursor-pointer" />
+                  </div>
                   <div>
                     <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Jenis Transaksi</label>
                     <select value={planForm.type} onChange={e => { const val = e.target.value; const isCustom = val === 'Lainnya...'; setPlanForm({...planForm, type: val, category: isCustom ? 'Lainnya...' : (categoryMap[val] ? categoryMap[val][0] : ''), customType: isCustom ? planForm.customType : '', customCategory: isCustom ? planForm.customCategory : ''}); }} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none focus:border-gray-900 transition-colors cursor-pointer">
@@ -890,14 +1060,22 @@
                   <div className="relative">
                     <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Kategori</label>
                     <div onClick={() => setPlanCatDropdownOpen(!planCatDropdownOpen)} className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium flex justify-between items-center cursor-pointer select-none"><span className="truncate pr-2">{planForm.category}</span><ChevronDown size={16} className="text-gray-500" /></div>
+                    
                     {planCatDropdownOpen && (
-                      <><div className="fixed inset-0 z-40" onClick={() => setPlanCatDropdownOpen(false)}></div>
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setPlanCatDropdownOpen(false)}></div>
                         <div className="absolute z-50 w-full mt-1 sm:mt-2 bg-white dark:bg-gray-800 border-2 border-gray-800 dark:border-gray-600 rounded-lg shadow-[4px_4px_0_0_#000000] max-h-48 overflow-y-auto">
                           {(categoryMap[planForm.type] || []).map(cat => (
-                            <div key={cat} className="flex justify-between items-center p-2.5 sm:p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer font-medium border-b border-gray-100 dark:border-gray-700"><span onClick={() => handlePlanCatSelect(cat)} className="flex-1 text-gray-900 dark:text-white truncate">{cat}</span><div className="p-1 sm:p-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg ml-2 group" onMouseDown={(e) => deleteCategoryFromMap(e, planForm.type, cat)}><Trash2 size={14} className="text-gray-400 group-hover:text-red-500" /></div></div>
+                            <div key={cat} className="flex justify-between items-center p-2.5 sm:p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer font-medium border-b border-gray-100 dark:border-gray-700">
+                              <span onClick={() => handlePlanCatSelect(cat)} className="flex-1 text-gray-900 dark:text-white truncate pr-2">{cat}</span>
+                              <div className="p-1 sm:p-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg ml-2 group transition-colors" onClick={(e) => deleteCategoryFromMap(e, planForm.type, cat)}>
+                                <Trash2 size={14} className="text-gray-400 group-hover:text-red-500" />
+                              </div>
+                            </div>
                           ))}
                           <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-200 cursor-pointer text-gray-900 dark:text-white font-bold" onClick={() => handlePlanCatSelect('Lainnya...')}>+ Tambah Lainnya...</div>
-                        </div></>
+                        </div>
+                      </>
                     )}
                     {planForm.category === 'Lainnya...' && <input type="text" placeholder="Ketik kategori baru..." required value={planForm.customCategory} onChange={e => setPlanForm({...planForm, customCategory: e.target.value})} className="mt-2 w-full border-2 border-amber-300 rounded-lg p-2.5 bg-amber-50 outline-none" />}
                   </div>
@@ -912,14 +1090,14 @@
                     <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Keterangan Tambahan</label>
                     <input type="text" value={planForm.description} onChange={e => setPlanForm({...planForm, description: e.target.value})} placeholder="Cth: Anggaran Belanja..." className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-medium outline-none" />
                   </div>
-                  <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-black mt-4 shadow-[2px_2px_0_0_#78350f] active:shadow-none active:translate-y-[2px] transition-all">Simpan ke Rencana</button>
+                  <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-black mt-4 shadow-[2px_2px_0_0_#78350f] active:shadow-none active:translate-y-[2px] transition-all">Simpan ke Tagihan</button>
                 </form>
               </div>
 
               <div className={`lg:col-span-8 bg-white dark:bg-gray-800 rounded-2xl flex flex-col lg:h-[680px] overflow-hidden ${box3D}`}>
                 <div className="p-6 border-b-2 border-gray-200 dark:border-gray-700 shrink-0">
-                   <h3 className="font-black text-xl text-gray-900 dark:text-white">Daftar Rencana {planForm.month}</h3>
-                   <p className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">Total Dianggarkan: {renderAmount(totalPlannedAmount)}</p>
+                   <h3 className="font-black text-xl text-gray-900 dark:text-white">Daftar Tagihan: {currentMonthPrefix}</h3>
+                   <p className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">Total Belum Dibayar: {renderAmount(totalPlannedAmount)}</p>
                 </div>
                 <div className="flex-1 overflow-x-auto overflow-y-auto bg-gray-50 dark:bg-gray-900/50 p-4 sm:p-6">
                    <div className="space-y-4 min-w-[500px]">
@@ -928,22 +1106,25 @@
                           <div className="flex items-start gap-4">
                             <div className="mt-1">{p.is_completed ? <CheckCircle2 size={24} className="text-green-500" /> : <Clock size={24} className="text-amber-500" />}</div>
                             <div>
-                              <p className="font-black text-lg text-gray-900 dark:text-white">{p.category} <span className="text-gray-400 font-medium text-sm mx-1">({p.type})</span></p>
+                              <p className="font-black text-lg text-gray-900 dark:text-white">{p.category} <span className="text-gray-400 font-medium text-sm mx-1">({p.date})</span></p>
                               <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-0.5">{p.description}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-6">
-                            <span className="font-black text-lg tracking-tight text-gray-800 dark:text-gray-200">{renderAmount(p.amount)}</span>
+                          <div className="flex flex-col items-end gap-2">
+                            <span className="font-black text-lg tracking-tight text-gray-800 dark:text-gray-200 mb-1">{renderAmount(p.amount)}</span>
                             <div className="flex gap-2">
                               {!p.is_completed && (
-                                <button onClick={() => executePlan(p)} className="flex items-center gap-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 px-3 py-2 rounded-lg font-bold transition-colors"><CheckCircle2 size={16}/> Eksekusi</button>
+                                <>
+                                  <button onClick={() => addEventToGoogleCalendar(p)} className="flex items-center gap-1 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-300 px-3 py-2 rounded-lg font-bold transition-colors text-xs sm:text-sm"><Calendar size={14}/> Ke G-Cal</button>
+                                  <button onClick={() => executePlan(p)} className="flex items-center gap-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 px-3 py-2 rounded-lg font-bold transition-colors text-xs sm:text-sm"><CheckCircle2 size={14}/> Bayar</button>
+                                </>
                               )}
-                              <button onClick={() => deletePlan(p.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-2 rounded-lg transition-colors"><Trash2 size={18}/></button>
+                              <button onClick={() => deletePlan(p.id)} className="text-gray-400 hover:text-white hover:bg-red-500 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button>
                             </div>
                           </div>
                        </div>
                      ))}
-                     {currentMonthPlans.length === 0 && <div className="text-center py-16"><ClipboardList size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" /><p className="font-bold text-gray-500 dark:text-gray-400">Belum ada rencana bulan ini.</p></div>}
+                     {currentMonthPlans.length === 0 && <div className="text-center py-16"><ClipboardList size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" /><p className="font-bold text-gray-500 dark:text-gray-400">Belum ada tagihan bulan ini.</p></div>}
                    </div>
                 </div>
               </div>
@@ -966,11 +1147,12 @@
                   <div className="flex items-center gap-2 mt-1.5">
                     <p className="text-gray-600 dark:text-gray-400 font-bold text-xs sm:text-sm flex items-center gap-2">
                       <span className="truncate max-w-[150px] sm:max-w-none">{user?.email}</span> 
-                      <span className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-2 py-0.5 rounded text-[10px] sm:text-xs">PRO Member</span>
+                      <span className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-2 py-0.5 rounded text-[10px] sm:text-xs">{user?.email === 'tester@canvas.local' ? 'Mode Testing' : 'PRO Member'}</span>
                     </p>
                     {saveStatus === 'saving' && <span className="text-[10px] sm:text-xs text-amber-500 flex items-center gap-1 font-bold animate-pulse"><Clock size={14}/> Menyimpan...</span>}
                     {saveStatus === 'saved' && <span className="text-[10px] sm:text-xs text-green-500 flex items-center gap-1 font-bold"><CheckCircle2 size={14}/> Tersimpan</span>}
                     {saveStatus === 'error' && <span className="text-[10px] sm:text-xs text-red-500 flex items-center gap-1 font-bold"><AlertCircle size={14}/> Gagal Simpan</span>}
+                    {saveStatus && saveStatus !== 'saving' && saveStatus !== 'saved' && saveStatus !== 'error' && <span className="text-[10px] sm:text-xs text-blue-500 flex items-center gap-1 font-bold animate-pulse"><Clock size={14}/> {saveStatus}</span>}
                   </div>
                 </div>
                 <div className="flex gap-1 sm:gap-2 mt-3 md:mt-0">
@@ -1020,6 +1202,7 @@
                     <Wallet className="mb-3 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" size={28} />
                     <p className="text-xs sm:text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">Saldo Dompet (All)</p>
                     <h3 className="text-xl sm:text-2xl font-black text-blue-900 dark:text-blue-100 tracking-tight truncate">{renderAmount(stats.saldoSaatIni)}</h3>
+                    <p className="text-[10px] sm:text-xs font-bold text-blue-700 dark:text-blue-400 mt-1">Belum di bayar: {renderAmount(totalTagihanAktif)}</p>
                   </div>
                   
                   <div onClick={() => { setHistoryType('pemasukan'); setCurrentView('history'); }} className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col justify-center cursor-pointer group ${box3D} ${box3DHover}`}>
@@ -1042,8 +1225,8 @@
                   
                   <div onClick={() => setCurrentView('planner')} className={`bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/60 dark:to-amber-800/60 p-4 sm:p-6 rounded-2xl flex flex-col justify-center cursor-pointer group ${box3D} ${box3DHover}`}>
                     <ClipboardList className="mb-3 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" size={28} />
-                    <p className="text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-300 mb-1">Rencana Bulanan</p>
-                    <h3 className="text-xl sm:text-2xl font-black text-amber-900 dark:text-amber-100 tracking-tight truncate">{(Array.isArray(plans) ? plans : []).filter(p => !p.is_completed).length} Tugas Aktif</h3>
+                    <p className="text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-300 mb-1">Tagihan Aktif</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-amber-900 dark:text-amber-100 tracking-tight truncate">{(Array.isArray(plans) ? plans : []).filter(p => !p.is_completed).length} Tagihan</h3>
                   </div>
                 </div>
 
@@ -1075,7 +1258,7 @@
                         </div>
                         
                         <div className="relative">
-                          <label className="block text-xs sm:text-sm font-bold mb-1.5 text-gray-700 dark:text-gray-300">Kategori</label>
+                          <label className="block text-xs sm:text-sm font-bold mb-1.5 text-gray-700 dark:text-gray-300">Kategori / Target</label>
                           <div onClick={() => setCatDropdownOpen(!catDropdownOpen)} className="w-full border-2 border-gray-300 dark:border-gray-600 p-2.5 rounded-lg flex justify-between items-center cursor-pointer font-bold text-gray-900 dark:text-white dark:bg-gray-700 outline-none focus:border-indigo-500 transition-colors select-none">
                             <span className="truncate pr-2">{formData.category}</span><ChevronDown size={18} className="text-gray-500"/>
                           </div>
@@ -1084,17 +1267,23 @@
                             <>
                               <div className="fixed inset-0 z-40" onClick={() => setCatDropdownOpen(false)}></div>
                               <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_#000] rounded-xl max-h-48 overflow-y-auto">
-                                {(categoryMap[formData.type] || []).map(cat => (
+                                {(formData.type.toLowerCase() === 'tabungan' ? [...goals.map(g => g.name), 'Tabungan Bebas'] : (categoryMap[formData.type] || [])).map(cat => {
+                                  const isTabunganMode = formData.type.toLowerCase() === 'tabungan';
+                                  return (
                                   <div key={cat} className="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex justify-between items-center cursor-pointer border-b border-gray-100 dark:border-gray-700 transition-colors">
                                     <span onClick={() => { setFormData({...formData, category: cat}); setCatDropdownOpen(false); }} className="flex-1 font-bold text-gray-900 dark:text-white truncate pr-2">{cat}</span>
-                                    <div onMouseDown={(e) => deleteCategoryFromMap(e, formData.type, cat)} className="p-1.5 bg-gray-200 dark:bg-gray-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg group transition-colors">
-                                      <Trash2 size={16} className="text-gray-500 group-hover:text-red-500" />
-                                    </div>
+                                    {!isTabunganMode && (
+                                      <div onClick={(e) => deleteCategoryFromMap(e, formData.type, cat)} className="p-1.5 bg-gray-200 dark:bg-gray-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg group transition-colors">
+                                        <Trash2 size={16} className="text-gray-500 group-hover:text-red-500" />
+                                      </div>
+                                    )}
                                   </div>
-                                ))}
-                                <div onClick={() => handleCatSelect('Lainnya...')} className="p-3 font-black text-indigo-600 dark:text-indigo-400 bg-gray-50 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors">
-                                  + Tambah Kategori Baru...
-                                </div>
+                                )})}
+                                {formData.type.toLowerCase() !== 'tabungan' && (
+                                  <div onClick={() => handleCatSelect('Lainnya...')} className="p-3 font-black text-indigo-600 dark:text-indigo-400 bg-gray-50 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                    + Tambah Kategori Baru...
+                                  </div>
+                                )}
                               </div>
                             </>
                           )}
@@ -1299,7 +1488,7 @@
                       <ul className="list-disc pl-5 space-y-1">
                         <li><strong>Pilih Jenis:</strong> Tentukan apakah ini <em>Pemasukan</em>, <em>Pengeluaran Harian</em>, <em>Biaya Bulanan</em>, atau <em>Tabungan</em>.</li>
                         <li><strong>Kategori Kustom:</strong> Jika kategori yang ada kurang cocok, pilih <strong>"Lainnya..."</strong>. Kategori baru yang diketik akan otomatis tersimpan permanen di database!</li>
-                        <li><strong>Hapus Kategori:</strong> Klik ikon tong sampah (🗑️) di dropdown untuk menghapusnya.</li>
+                        <li><strong>Hapus Kategori:</strong> Klik ikon tong sampah (🗑️) di dropdown untuk menghapusnya. Jika Anda menghapus kategori bawaan sistem, ia akan disembunyikan.</li>
                       </ul>
                     </div>
 
@@ -1309,15 +1498,17 @@
                       <ul className="list-disc pl-5 space-y-1">
                         <li>Tentukan <strong>Target Nominal</strong>, <strong>Tanggal Capai</strong>, dan <strong>Urgensi</strong>.</li>
                         <li>Klik <strong>Update Saldo</strong> untuk menyicil uang ke target tersebut. <em>(Tips: Ketik minus "-" di awal angka untuk menarik/mengurangi saldo).</em></li>
+                        <li><strong>Otomatisasi:</strong> Jika Anda mencatat transaksi dengan jenis "Tabungan" di Dashboard utama, uangnya akan langsung disalurkan ke target tabungan yang Anda pilih!</li>
                       </ul>
                     </div>
 
                     <div className="space-y-2">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><ClipboardList size={18} className="text-amber-500"/> 4. Rencana Bulanan (Budgeting)</h3>
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><ClipboardList size={18} className="text-amber-500"/> 4. Tagihan Aktif (Budgeting)</h3>
                       <p>Berguna untuk menyusun anggaran pengeluaran rutin masa depan (bayar kos, listrik, internet).</p>
                       <ul className="list-disc pl-5 space-y-1">
                         <li>Data yang dicatat di sini <strong>belum memotong saldo aktual Anda</strong>. Ini murni sebatas "pengingat".</li>
-                        <li><strong>Tombol Eksekusi:</strong> Saat Anda benar-benar membayar tagihannya, klik tombol ini! Anda bisa mengedit nominalnya jika tagihan asli berbeda. Setelah dieksekusi, ia otomatis pindah ke riwayat transaksi nyata.</li>
+                        <li><strong>Tombol Bayar:</strong> Saat Anda benar-benar membayar tagihannya, klik tombol ini! Anda bisa mengedit nominalnya jika tagihan asli berbeda. Setelah dieksekusi, ia otomatis pindah ke riwayat transaksi nyata.</li>
+                        <li><strong>Sinkron G-Cal:</strong> Klik tombol ini untuk membuat alarm otomatis di kalender HP Anda (Hanya bekerja jika Anda login menggunakan Google secara resmi).</li>
                       </ul>
                     </div>
 
@@ -1326,7 +1517,6 @@
                       <ul className="list-disc pl-5 space-y-1">
                         <li><strong>Filter Waktu:</strong> Ubah tampilan ringkasan ke mode Harian, Bulanan, atau Semua Waktu di pojok kanan atas Dashboard.</li>
                         <li><strong>Mode Mata (Privasi):</strong> Klik ikon Mata (👁️) di header untuk menyembunyikan nominal uang Anda saat membuka aplikasi di tempat umum.</li>
-                        <li><strong>Export CSV:</strong> Masuk ke riwayat transaksi dan klik tombol Export untuk men-download data ke format Excel.</li>
                       </ul>
                     </div>
                   </div>
